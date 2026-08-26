@@ -1144,6 +1144,21 @@ function ProjectDetails({
 
         <button
           className={
+            activeTab === "transmittals"
+              ? "project-tab active"
+              : "project-tab"
+          }
+          onClick={() =>
+            setActiveTab(
+              "transmittals"
+            )
+          }
+        >
+          Transmittals
+        </button>
+
+        <button
+          className={
             activeTab === "workflow"
               ? "project-tab active"
               : "project-tab"
@@ -1350,6 +1365,12 @@ function ProjectDetails({
 
         </section>
 
+      )}
+
+      {activeTab === "transmittals" && (
+        <ProjectTransmittals
+          project={project}
+        />
       )}
 
       {activeTab === "workflow" && (

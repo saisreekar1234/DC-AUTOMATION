@@ -27,6 +27,16 @@ const documentApprovalRoutes =
 const revisionWorkflowRoutes =
   require("./routes/revisionWorkflowRoutes");
 
+const authRoutes =
+  require("./routes/authRoutes");
+
+const userRoutes =
+  require("./routes/userRoutes");
+
+const projectMemberRoutes =
+  require("./routes/projectMemberRoutes");
+
+
 
   
 const app = express();
@@ -62,8 +72,20 @@ app.use(
   "/api/revision-workflow",
   revisionWorkflowRoutes
 );
+app.use(
+  "/api/auth",
+  authRoutes
+);
 
+app.use(
+  "/api/users",
+  userRoutes
+);
 
+app.use(
+  "/api/project-members",
+  projectMemberRoutes
+);
 
 
 

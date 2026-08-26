@@ -6,10 +6,12 @@ import {
 
 import axios from "axios";
 
-import "./index.css";
+import "./App.css";
 
 import Documents from "./components/Documents";
 import Projects from "./components/Projects";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
 
 const API_BASE_URL =
   "http://localhost:5000/api";
@@ -93,6 +95,68 @@ function App() {
   const fileInputRef =
     useRef(null);
 
+  // ==========================================================
+  // AUTHENTICATION
+  // ==========================================================
+
+  const [
+    user,
+    setUser,
+  ] = useState(() => {
+    try {
+      const savedUser =
+        localStorage.getItem("dc_user");
+
+      return savedUser
+        ? JSON.parse(savedUser)
+        : null;
+    } catch {
+      localStorage.removeItem("dc_user");
+      return null;
+    }
+  });
+
+  const [
+    authLoading,
+    setAuthLoading,
+  ] = useState(true);
+
+  function logout() {
+    localStorage.removeItem("dc_token");
+    localStorage.removeItem("dc_user");
+
+    delete axios.defaults.headers.common.Authorization;
+
+    setUser(null);
+  }
+
+  function handleLoginSuccess(loggedInUser, token) {
+    if (token) {
+      axios.defaults.headers.common.Authorization =
+        `Bearer ${token}`;
+    }
+
+    if (loggedInUser) {
+      localStorage.setItem(
+        "dc_user",
+        JSON.stringify(loggedInUser)
+      );
+    }
+
+    setUser(loggedInUser);
+  }
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("dc_token");
+
+    if (token) {
+      axios.defaults.headers.common.Authorization =
+        `Bearer ${token}`;
+    }
+
+    setAuthLoading(false);
+  }, []);
 
   // ==========================================================
   // LOAD TRANSMITTALS
@@ -217,6 +281,7 @@ function App() {
         "";
 
     }
+
   }
 
 
@@ -463,9 +528,13 @@ function App() {
 
   useEffect(() => {
 
+    if (!user) {
+      return;
+    }
+
     loadTransmittals();
 
-  }, []);
+  }, [user]);
 
 
   // ==========================================================
@@ -516,1117 +585,966 @@ function App() {
 
 
   // ==========================================================
+  // AUTHENTICATION GATE
+  // ==========================================================
+
+  if (authLoading) {
+
+    return (
+      <div className="auth-loading-screen">
+        <div className="loading-spinner"></div>
+        <span>Loading Document Control...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+
+    return (
+      <Login
+        onLoginSuccess={
+          handleLoginSuccess
+        }
+      />
+    );
+  }
+
+  // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
 
-    <div className="app">
+    <Layout
+      activePage={activePage}
+      onNavigate={navigateTo}
+    >
 
 
-      {/* ====================================================
-          SIDEBAR
-          ==================================================== */}
+      {/* ==================================================
+          TOPBAR
+          ================================================== */}
 
-      <aside className="sidebar">
+      <header className="topbar">
 
+        <div>
 
-        {/* BRAND */}
+          <p className="eyebrow">
+            DOCUMENT CONTROL
+          </p>
 
-        <div className="brand">
-
-          <div className="brand-icon">
-            DC
-          </div>
-
-          <div>
-
-            <h1>
-              Document Control
-            </h1>
-
-            <span>
-              Automation System
-            </span>
-
-          </div>
+          <h2>
+            {getPageTitle()}
+          </h2>
 
         </div>
 
 
-        {/* ==================================================
-            NAVIGATION
-            ================================================== */}
+        {/* REFRESH */}
 
-        <nav className="navigation">
-
-
-          {/* DASHBOARD */}
+        {(
+          activePage ===
+            "dashboard" ||
+          activePage ===
+            "transmittals"
+        ) && (
 
           <button
-            className={`nav-item ${
-              activePage ===
-              "dashboard"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              navigateTo(
-                "dashboard"
-              )
+            className="refresh-button"
+            onClick={
+              loadTransmittals
+            }
+            disabled={
+              loading
             }
           >
 
-            <span>
-              ▦
-            </span>
-
-            Dashboard
+            ↻ Refresh
 
           </button>
 
+        )}
 
-          {/* DOCUMENTS */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+        }}>
 
-          <button
-            className={`nav-item ${
-              activePage ===
-              "documents"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              navigateTo(
-                "documents"
-              )
-            }
-          >
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+          }}>
+            <strong style={{
+              color: "#344054",
+              fontSize: "12px",
+            }}>
+              {user?.name ||
+                user?.full_name ||
+                user?.email ||
+                "User"}
+            </strong>
 
-            <span>
-              ▤
+            <span style={{
+              color: "#98a2b3",
+              fontSize: "10px",
+            }}>
+              {user?.role ||
+                "Document Controller"}
             </span>
-
-            Documents
-
-          </button>
-
-
-          {/* PROJECTS */}
-
-          <button
-            className={`nav-item ${
-              activePage ===
-              "projects"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              navigateTo(
-                "projects"
-              )
-            }
-          >
-
-            <span>
-              ⌂
-            </span>
-
-            Projects
-
-          </button>
-
-
-          {/* TRANSMITTALS */}
-
-          <button
-            className={`nav-item ${
-              activePage ===
-              "transmittals"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              navigateTo(
-                "transmittals"
-              )
-            }
-          >
-
-            <span>
-              ⇄
-            </span>
-
-            Transmittals
-
-          </button>
-
-
-          {/* APPROVALS */}
-
-          <button
-            className={`nav-item ${
-              activePage ===
-              "approvals"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              navigateTo(
-                "approvals"
-              )
-            }
-          >
-
-            <span>
-              ✓
-            </span>
-
-            Approvals
-
-          </button>
-
-
-          {/* SETTINGS */}
-
-          <button
-            className={`nav-item ${
-              activePage ===
-              "settings"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              navigateTo(
-                "settings"
-              )
-            }
-          >
-
-            <span>
-              ⚙
-            </span>
-
-            Settings
-
-          </button>
-
-
-        </nav>
-
-
-        {/* ==================================================
-            SIDEBAR FOOTER
-            ================================================== */}
-
-        <div className="sidebar-footer">
-
-          <div className="system-status">
-
-            <span className="status-dot"></span>
-
-            Backend Connected
-
           </div>
+
+          <button
+            type="button"
+            className="refresh-button"
+            onClick={logout}
+          >
+            Sign out
+          </button>
 
         </div>
 
-
-      </aside>
-
-
-      {/* ====================================================
-          MAIN CONTENT
-          ==================================================== */}
-
-      <main className="main-content">
+      </header>
 
 
-        {/* ==================================================
-            TOPBAR
-            ================================================== */}
+      {/* ==================================================
+          GLOBAL ERROR
+          ================================================== */}
 
-        <header className="topbar">
+      {error && (
 
-          <div>
+        <div className="content">
 
-            <p className="eyebrow">
-              DOCUMENT CONTROL
-            </p>
+          <div className="error-banner">
 
-            <h2>
-              {getPageTitle()}
-            </h2>
+            <strong>
+              Error:
+            </strong>
 
-          </div>
-
-
-          {/* REFRESH */}
-
-          {(
-            activePage ===
-              "dashboard" ||
-            activePage ===
-              "transmittals"
-          ) && (
+            <span>
+              {error}
+            </span>
 
             <button
-              className="refresh-button"
-              onClick={
-                loadTransmittals
-              }
-              disabled={
-                loading
+              className="error-close"
+              onClick={() =>
+                setError("")
               }
             >
-
-              ↻ Refresh
-
+              ×
             </button>
 
-          )}
+          </div>
 
-        </header>
+        </div>
+
+      )}
 
 
-        {/* ==================================================
-            GLOBAL ERROR
-            ================================================== */}
+      {/* ==================================================
+          DASHBOARD
+          ================================================== */}
 
-        {error && (
+      {activePage ===
+        "dashboard" && (
 
-          <div className="content">
+        <section className="content">
 
-            <div className="error-banner">
 
-              <strong>
-                Error:
-              </strong>
+          {/* SUMMARY */}
 
-              <span>
-                {error}
-              </span>
+          <div className="summary-grid">
+
+            <SummaryCard
+              title="Total Transmittals"
+              value={
+                transmittals.length
+              }
+              icon="▤"
+            />
+
+            <SummaryCard
+              title="Analysed"
+              value={
+                transmittals.filter(
+                  (item) =>
+                    String(
+                      item.analysis_status ||
+                        ""
+                    ).toUpperCase() ===
+                    "ANALYSED"
+                ).length
+              }
+              icon="✓"
+            />
+
+            <SummaryCard
+              title="Documents"
+              value={
+                transmittals.reduce(
+                  (
+                    total,
+                    item
+                  ) =>
+                    total +
+                    Number(
+                      item.item_count ||
+                        0
+                    ),
+                  0
+                )
+              }
+              icon="▦"
+            />
+
+            <SummaryCard
+              title="Processed"
+              value={
+                transmittals.reduce(
+                  (
+                    total,
+                    item
+                  ) =>
+                    total +
+                    Number(
+                      item.processed_count ||
+                        0
+                    ),
+                  0
+                )
+              }
+              icon="↗"
+            />
+
+          </div>
+
+
+          {/* DASHBOARD PANEL */}
+
+          <section className="panel">
+
+            <div className="panel-header">
+
+              <div>
+
+                <p className="eyebrow">
+                  DOCUMENT CONTROL
+                </p>
+
+                <h3>
+                  Dashboard
+                </h3>
+
+                <p>
+                  Monitor document
+                  control activity,
+                  projects,
+                  transmittals and
+                  processing status.
+                </p>
+
+              </div>
+
 
               <button
-                className="error-close"
-                onClick={() =>
-                  setError("")
-                }
+                className="upload-button"
+                onClick={() => {
+
+                  setActivePage(
+                    "transmittals"
+                  );
+
+                  openUploadModal();
+
+                }}
               >
-                ×
+
+                <span>
+                  ＋
+                </span>
+
+                Upload Transmittal
+
               </button>
 
             </div>
 
+
+            <div className="empty-state">
+
+              <div className="empty-icon">
+                ✓
+              </div>
+
+              <strong>
+                Document Control
+                Automation
+              </strong>
+
+              <span>
+                Use the navigation to
+                manage documents,
+                projects and customer
+                transmittals.
+              </span>
+
+            </div>
+
+          </section>
+
+        </section>
+
+      )}
+
+
+      {/* ==================================================
+          DOCUMENTS
+          ================================================== */}
+
+      {activePage ===
+        "documents" && (
+
+        <section className="content">
+
+          <Documents />
+
+        </section>
+
+      )}
+
+
+      {/* ==================================================
+          PROJECTS
+          ================================================== */}
+
+      {activePage ===
+        "projects" && (
+
+        <section className="content">
+
+          <Projects />
+
+        </section>
+
+      )}
+
+
+      {/* ==================================================
+          TRANSMITTALS
+          ================================================== */}
+
+      {activePage ===
+        "transmittals" && (
+
+        <section className="content">
+
+
+          {/* SUMMARY */}
+
+          <div className="summary-grid">
+
+            <SummaryCard
+              title="Total Transmittals"
+              value={
+                transmittals.length
+              }
+              icon="▤"
+            />
+
+            <SummaryCard
+              title="Analysed"
+              value={
+                transmittals.filter(
+                  (item) =>
+                    String(
+                      item.analysis_status ||
+                        ""
+                    ).toUpperCase() ===
+                    "ANALYSED"
+                ).length
+              }
+              icon="✓"
+            />
+
+            <SummaryCard
+              title="Documents"
+              value={
+                transmittals.reduce(
+                  (
+                    total,
+                    item
+                  ) =>
+                    total +
+                    Number(
+                      item.item_count ||
+                        0
+                    ),
+                  0
+                )
+              }
+              icon="▦"
+            />
+
+            <SummaryCard
+              title="Processed"
+              value={
+                transmittals.reduce(
+                  (
+                    total,
+                    item
+                  ) =>
+                    total +
+                    Number(
+                      item.processed_count ||
+                        0
+                    ),
+                  0
+                )
+              }
+              icon="↗"
+            />
+
           </div>
 
-        )}
+
+          {/* TRANSMITTAL PANEL */}
+
+          <section className="panel">
+
+            <div className="panel-header">
+
+              <div>
+
+                <h3>
+                  Customer Transmittals
+                </h3>
+
+                <p>
+                  Uploaded customer
+                  documents and
+                  processing status.
+                </p>
+
+              </div>
 
 
-        {/* ==================================================
-            DASHBOARD
-            ================================================== */}
-
-        {activePage ===
-          "dashboard" && (
-
-          <section className="content">
-
-
-            {/* SUMMARY */}
-
-            <div className="summary-grid">
-
-              <SummaryCard
-                title="Total Transmittals"
-                value={
-                  transmittals.length
+              <button
+                className="upload-button"
+                onClick={
+                  openUploadModal
                 }
-                icon="▤"
-              />
+              >
 
-              <SummaryCard
-                title="Analysed"
-                value={
-                  transmittals.filter(
-                    (item) =>
-                      String(
-                        item.analysis_status ||
-                          ""
-                      ).toUpperCase() ===
-                      "ANALYSED"
-                  ).length
-                }
-                icon="✓"
-              />
+                <span>
+                  ＋
+                </span>
 
-              <SummaryCard
-                title="Documents"
-                value={
-                  transmittals.reduce(
-                    (
-                      total,
-                      item
-                    ) =>
-                      total +
-                      Number(
-                        item.item_count ||
-                          0
-                      ),
-                    0
-                  )
-                }
-                icon="▦"
-              />
+                Upload Transmittal
 
-              <SummaryCard
-                title="Processed"
-                value={
-                  transmittals.reduce(
-                    (
-                      total,
-                      item
-                    ) =>
-                      total +
-                      Number(
-                        item.processed_count ||
-                          0
-                      ),
-                    0
-                  )
-                }
-                icon="↗"
-              />
+              </button>
 
             </div>
 
 
-            {/* DASHBOARD PANEL */}
+            {loading ? (
 
-            <section className="panel">
+              <div className="empty-state">
 
-              <div className="panel-header">
+                <div className="loading-spinner"></div>
 
-                <div>
-
-                  <p className="eyebrow">
-                    DOCUMENT CONTROL
-                  </p>
-
-                  <h3>
-                    Dashboard
-                  </h3>
-
-                  <p>
-                    Monitor document
-                    control activity,
-                    projects,
-                    transmittals and
-                    processing status.
-                  </p>
-
-                </div>
-
-
-                <button
-                  className="upload-button"
-                  onClick={() => {
-
-                    setActivePage(
-                      "transmittals"
-                    );
-
-                    openUploadModal();
-
-                  }}
-                >
-
-                  <span>
-                    ＋
-                  </span>
-
-                  Upload Transmittal
-
-                </button>
+                Loading
+                transmittals...
 
               </div>
 
+            ) : transmittals.length ===
+              0 ? (
 
               <div className="empty-state">
 
                 <div className="empty-icon">
-                  ✓
+                  ⇄
                 </div>
 
                 <strong>
-                  Document Control
-                  Automation
+                  No customer
+                  transmittals found
                 </strong>
 
                 <span>
-                  Use the navigation to
-                  manage documents,
-                  projects and customer
-                  transmittals.
+                  Upload your first
+                  customer transmittal
+                  to begin processing.
                 </span>
 
-              </div>
-
-            </section>
-
-          </section>
-
-        )}
-
-
-        {/* ==================================================
-            DOCUMENTS
-            ================================================== */}
-
-        {activePage ===
-          "documents" && (
-
-          <section className="content">
-
-            <Documents />
-
-          </section>
-
-        )}
-
-
-        {/* ==================================================
-            PROJECTS
-            ================================================== */}
-
-        {activePage ===
-          "projects" && (
-
-          <section className="content">
-
-            <Projects />
-
-          </section>
-
-        )}
-
-
-        {/* ==================================================
-            TRANSMITTALS
-            ================================================== */}
-
-        {activePage ===
-          "transmittals" && (
-
-          <section className="content">
-
-
-            {/* SUMMARY */}
-
-            <div className="summary-grid">
-
-              <SummaryCard
-                title="Total Transmittals"
-                value={
-                  transmittals.length
-                }
-                icon="▤"
-              />
-
-              <SummaryCard
-                title="Analysed"
-                value={
-                  transmittals.filter(
-                    (item) =>
-                      String(
-                        item.analysis_status ||
-                          ""
-                      ).toUpperCase() ===
-                      "ANALYSED"
-                  ).length
-                }
-                icon="✓"
-              />
-
-              <SummaryCard
-                title="Documents"
-                value={
-                  transmittals.reduce(
-                    (
-                      total,
-                      item
-                    ) =>
-                      total +
-                      Number(
-                        item.item_count ||
-                          0
-                      ),
-                    0
-                  )
-                }
-                icon="▦"
-              />
-
-              <SummaryCard
-                title="Processed"
-                value={
-                  transmittals.reduce(
-                    (
-                      total,
-                      item
-                    ) =>
-                      total +
-                      Number(
-                        item.processed_count ||
-                          0
-                      ),
-                    0
-                  )
-                }
-                icon="↗"
-              />
-
-            </div>
-
-
-            {/* TRANSMITTAL PANEL */}
-
-            <section className="panel">
-
-              <div className="panel-header">
-
-                <div>
-
-                  <h3>
-                    Customer Transmittals
-                  </h3>
-
-                  <p>
-                    Uploaded customer
-                    documents and
-                    processing status.
-                  </p>
-
-                </div>
-
-
                 <button
-                  className="upload-button"
+                  className="empty-upload-button"
                   onClick={
                     openUploadModal
                   }
                 >
-
-                  <span>
-                    ＋
-                  </span>
-
-                  Upload Transmittal
-
+                  Upload
+                  Transmittal
                 </button>
 
               </div>
 
+            ) : (
 
-              {loading ? (
+              <div className="table-container">
 
-                <div className="empty-state">
+                <table>
 
-                  <div className="loading-spinner"></div>
+                  <thead>
 
-                  Loading
-                  transmittals...
+                    <tr>
 
-                </div>
+                      <th>
+                        ID
+                      </th>
 
-              ) : transmittals.length ===
-                0 ? (
+                      <th>
+                        Customer
+                      </th>
 
-                <div className="empty-state">
+                      <th>
+                        Reference
+                      </th>
 
-                  <div className="empty-icon">
-                    ⇄
-                  </div>
+                      <th>
+                        Transmittal Date
+                      </th>
 
-                  <strong>
-                    No customer
-                    transmittals found
-                  </strong>
+                      <th>
+                        Documents
+                      </th>
 
-                  <span>
-                    Upload your first
-                    customer transmittal
-                    to begin processing.
-                  </span>
+                      <th>
+                        Matched
+                      </th>
 
-                  <button
-                    className="empty-upload-button"
-                    onClick={
-                      openUploadModal
-                    }
-                  >
-                    Upload
-                    Transmittal
-                  </button>
+                      <th>
+                        Processed
+                      </th>
 
-                </div>
+                      <th>
+                        Status
+                      </th>
 
-              ) : (
+                      <th></th>
 
-                <div className="table-container">
+                    </tr>
 
-                  <table>
-
-                    <thead>
-
-                      <tr>
-
-                        <th>
-                          ID
-                        </th>
-
-                        <th>
-                          Customer
-                        </th>
-
-                        <th>
-                          Reference
-                        </th>
-
-                        <th>
-                          Transmittal Date
-                        </th>
-
-                        <th>
-                          Documents
-                        </th>
-
-                        <th>
-                          Matched
-                        </th>
-
-                        <th>
-                          Processed
-                        </th>
-
-                        <th>
-                          Status
-                        </th>
-
-                        <th></th>
-
-                      </tr>
-
-                    </thead>
+                  </thead>
 
 
-                    <tbody>
+                  <tbody>
 
-                      {transmittals.map(
-                        (
-                          transmittal
-                        ) => (
+                    {transmittals.map(
+                      (
+                        transmittal
+                      ) => (
 
-                          <tr
-                            key={
-                              transmittal.id
-                            }
-                          >
+                        <tr
+                          key={
+                            transmittal.id
+                          }
+                        >
 
-                            <td>
+                          <td>
 
-                              <span className="id-badge">
+                            <span className="id-badge">
 
-                                #
+                              #
+                              {
+                                transmittal.id
+                              }
+
+                            </span>
+
+                          </td>
+
+
+                          <td>
+
+                            <div className="customer-cell">
+
+                              <strong>
+
                                 {
-                                  transmittal.id
+                                  transmittal.customer_name ||
+                                  "Unknown Customer"
+                                }
+
+                              </strong>
+
+                              <span>
+
+                                {
+                                  transmittal.file_name ||
+                                  "—"
                                 }
 
                               </span>
 
-                            </td>
+                            </div>
+
+                          </td>
 
 
-                            <td>
+                          <td>
 
-                              <div className="customer-cell">
+                            {
+                              transmittal.transmittal_reference ||
+                              "—"
+                            }
 
-                                <strong>
-
-                                  {
-                                    transmittal.customer_name ||
-                                    "Unknown Customer"
-                                  }
-
-                                </strong>
-
-                                <span>
-
-                                  {
-                                    transmittal.file_name ||
-                                    "—"
-                                  }
-
-                                </span>
-
-                              </div>
-
-                            </td>
+                          </td>
 
 
-                            <td>
+                          <td>
 
-                              {
-                                transmittal.transmittal_reference ||
-                                "—"
-                              }
+                            {
+                              transmittal.transmittal_date ||
+                              "—"
+                            }
 
-                            </td>
+                          </td>
 
 
-                            <td>
+                          <td>
+
+                            {
+                              transmittal.item_count ??
+                              0
+                            }
+
+                          </td>
+
+
+                          <td>
+
+                            <span className="count matched">
 
                               {
-                                transmittal.transmittal_date ||
-                                "—"
-                              }
-
-                            </td>
-
-
-                            <td>
-
-                              {
-                                transmittal.item_count ??
+                                transmittal.matched_count ??
                                 0
                               }
 
-                            </td>
+                            </span>
+
+                          </td>
 
 
-                            <td>
+                          <td>
 
-                              <span className="count matched">
+                            <span className="count processed">
 
-                                {
-                                  transmittal.matched_count ??
-                                  0
-                                }
+                              {
+                                transmittal.processed_count ??
+                                0
+                              }
 
-                              </span>
+                            </span>
 
-                            </td>
-
-
-                            <td>
-
-                              <span className="count processed">
-
-                                {
-                                  transmittal.processed_count ??
-                                  0
-                                }
-
-                              </span>
-
-                            </td>
+                          </td>
 
 
-                            <td>
+                          <td>
 
-                              <StatusBadge
-                                status={
-                                  transmittal.analysis_status
-                                }
-                              />
+                            <StatusBadge
+                              status={
+                                transmittal.analysis_status
+                              }
+                            />
 
-                            </td>
-
-
-                            <td>
-
-                              <button
-                                className="view-button"
-                                onClick={() =>
-                                  openTransmittal(
-                                    transmittal.id
-                                  )
-                                }
-                              >
-                                View →
-                              </button>
-
-                            </td>
-
-                          </tr>
-
-                        )
-                      )}
-
-                    </tbody>
-
-                  </table>
-
-                </div>
-
-              )}
+                          </td>
 
 
-            </section>
+                          <td>
 
+                            <button
+                              className="view-button"
+                              onClick={() =>
+                                openTransmittal(
+                                  transmittal.id
+                                )
+                              }
+                            >
+                              View →
+                            </button>
 
-            {/* DETAILS LOADING */}
+                          </td>
 
-            {detailsLoading && (
+                        </tr>
 
-              <section className="panel details-panel">
+                      )
+                    )}
 
-                <div className="empty-state">
+                  </tbody>
 
-                  <div className="loading-spinner"></div>
+                </table>
 
-                  Loading
-                  transmittal details...
-
-                </div>
-
-              </section>
+              </div>
 
             )}
 
 
-            {/* DETAILS */}
-
-            {selectedTransmittal &&
-              !detailsLoading && (
-
-                <TransmittalDetails
-                  data={
-                    selectedTransmittal
-                  }
-                  onClose={() =>
-                    setSelectedTransmittal(
-                      null
-                    )
-                  }
-                />
-
-              )}
-
           </section>
 
-        )}
 
+          {/* DETAILS LOADING */}
 
-        {/* ==================================================
-            APPROVALS
-            ================================================== */}
+          {detailsLoading && (
 
-        {activePage ===
-          "approvals" && (
-
-          <section className="content">
-
-            <section className="panel">
-
-              <div className="panel-header">
-
-                <div>
-
-                  <p className="eyebrow">
-                    WORKFLOW
-                  </p>
-
-                  <h3>
-                    Approvals
-                  </h3>
-
-                  <p>
-                    Review and control
-                    document approval
-                    workflows.
-                  </p>
-
-                </div>
-
-              </div>
-
+            <section className="panel details-panel">
 
               <div className="empty-state">
 
-                <div className="empty-icon">
-                  ✓
-                </div>
+                <div className="loading-spinner"></div>
 
-                <strong>
-                  Approval Centre
-                </strong>
-
-                <span>
-                  This module is ready
-                  for connection to your
-                  existing approval
-                  workflow API.
-                </span>
+                Loading
+                transmittal details...
 
               </div>
 
             </section>
 
+          )}
+
+
+          {/* DETAILS */}
+
+          {selectedTransmittal &&
+            !detailsLoading && (
+
+            <TransmittalDetails
+              data={
+                selectedTransmittal
+              }
+              onClose={() =>
+                setSelectedTransmittal(
+                  null
+                )
+              }
+            />
+
+          )}
+
+        </section>
+
+      )}
+
+
+      {/* ==================================================
+          APPROVALS
+          ================================================== */}
+
+      {activePage ===
+        "approvals" && (
+
+        <section className="content">
+
+          <section className="panel">
+
+            <div className="panel-header">
+
+              <div>
+
+                <p className="eyebrow">
+                  WORKFLOW
+                </p>
+
+                <h3>
+                  Approvals
+                </h3>
+
+                <p>
+                  Review and control
+                  document approval
+                  workflows.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div className="empty-state">
+
+              <div className="empty-icon">
+                ✓
+              </div>
+
+              <strong>
+                Approval Centre
+              </strong>
+
+              <span>
+                This module is ready
+                for connection to your
+                existing approval
+                workflow API.
+              </span>
+
+            </div>
+
           </section>
 
-        )}
+        </section>
+
+      )}
 
 
-        {/* ==================================================
-            SETTINGS
-            ================================================== */}
+      {/* ==================================================
+          SETTINGS
+          ================================================== */}
 
-        {activePage ===
-          "settings" && (
+      {activePage ===
+        "settings" && (
 
-          <section className="content">
+        <section className="content">
 
-            <section className="panel">
+          <section className="panel">
 
-              <div className="panel-header">
+            <div className="panel-header">
+
+              <div>
+
+                <p className="eyebrow">
+                  SYSTEM
+                </p>
+
+                <h3>
+                  Settings
+                </h3>
+
+                <p>
+                  Configure your document
+                  control system.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div className="settings-grid">
+
+
+              {/* PROJECT MANAGEMENT */}
+
+              <button
+                className="settings-card"
+                onClick={() =>
+                  navigateTo(
+                    "projects"
+                  )
+                }
+              >
+
+                <div className="settings-card-icon">
+                  ⌂
+                </div>
 
                 <div>
 
-                  <p className="eyebrow">
-                    SYSTEM
-                  </p>
+                  <strong>
+                    Project Management
+                  </strong>
 
-                  <h3>
-                    Settings
-                  </h3>
-
-                  <p>
-                    Configure your document
-                    control system.
-                  </p>
+                  <span>
+                    Create and manage
+                    projects.
+                  </span>
 
                 </div>
 
-              </div>
+                <span className="settings-card-arrow">
+                  →
+                </span>
+
+              </button>
 
 
-              <div className="settings-grid">
+              {/* DOCUMENT MANAGEMENT */}
 
+              <button
+                className="settings-card"
+                onClick={() =>
+                  navigateTo(
+                    "documents"
+                  )
+                }
+              >
 
-                {/* PROJECT MANAGEMENT */}
+                <div className="settings-card-icon">
+                  ▤
+                </div>
 
-                <button
-                  className="settings-card"
-                  onClick={() =>
-                    navigateTo(
-                      "projects"
-                    )
-                  }
-                >
+                <div>
 
-                  <div className="settings-card-icon">
-                    ⌂
-                  </div>
+                  <strong>
+                    Document Management
+                  </strong>
 
-                  <div>
-
-                    <strong>
-                      Project Management
-                    </strong>
-
-                    <span>
-                      Create and manage
-                      projects.
-                    </span>
-
-                  </div>
-
-                  <span className="settings-card-arrow">
-                    →
+                  <span>
+                    Manage documents and
+                    revisions.
                   </span>
 
-                </button>
+                </div>
+
+                <span className="settings-card-arrow">
+                  →
+                </span>
+
+              </button>
 
 
-                {/* DOCUMENT MANAGEMENT */}
+              {/* APPROVALS */}
 
-                <button
-                  className="settings-card"
-                  onClick={() =>
-                    navigateTo(
-                      "documents"
-                    )
-                  }
-                >
+              <button
+                className="settings-card"
+                onClick={() =>
+                  navigateTo(
+                    "approvals"
+                  )
+                }
+              >
 
-                  <div className="settings-card-icon">
-                    ▤
-                  </div>
+                <div className="settings-card-icon">
+                  ✓
+                </div>
 
-                  <div>
+                <div>
 
-                    <strong>
-                      Document Management
-                    </strong>
+                  <strong>
+                    Workflow & Approvals
+                  </strong>
 
-                    <span>
-                      Manage documents and
-                      revisions.
-                    </span>
-
-                  </div>
-
-                  <span className="settings-card-arrow">
-                    →
+                  <span>
+                    Configure document
+                    workflows.
                   </span>
 
-                </button>
+                </div>
+
+                <span className="settings-card-arrow">
+                  →
+                </span>
+
+              </button>
 
 
-                {/* APPROVALS */}
-
-                <button
-                  className="settings-card"
-                  onClick={() =>
-                    navigateTo(
-                      "approvals"
-                    )
-                  }
-                >
-
-                  <div className="settings-card-icon">
-                    ✓
-                  </div>
-
-                  <div>
-
-                    <strong>
-                      Workflow & Approvals
-                    </strong>
-
-                    <span>
-                      Configure document
-                      workflows.
-                    </span>
-
-                  </div>
-
-                  <span className="settings-card-arrow">
-                    →
-                  </span>
-
-                </button>
-
-
-              </div>
-
-            </section>
+            </div>
 
           </section>
 
-        )}
+        </section>
 
-      </main>
+      )}
 
 
       {/* ====================================================
@@ -2013,7 +1931,8 @@ function App() {
 
       )}
 
-    </div>
+
+    </Layout>
 
   );
 }
@@ -2414,6 +2333,7 @@ function TransmittalDetails({
           }
         />
 
+
       </div>
 
 
@@ -2554,10 +2474,12 @@ function TransmittalDetails({
                           : "text-danger"
                       }
                     >
+
                       {
                         item.document_match_status ||
                         "UNMAPPED"
                       }
+
                     </strong>
 
                   </div>

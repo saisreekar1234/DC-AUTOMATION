@@ -24,6 +24,7 @@ const API_BASE_URL =
 const DEFAULT_PROJECT_ID = 1;
 
 export default function Documents() {
+
   // ==========================================================
   // DOCUMENT STATE
   // ==========================================================
@@ -47,6 +48,7 @@ export default function Documents() {
   const [error, setError] =
     useState("");
 
+
   // ==========================================================
   // FILTER STATE
   // ==========================================================
@@ -64,12 +66,15 @@ export default function Documents() {
     setProjectFilter,
   ] = useState("ALL");
 
+
   // ==========================================================
   // LOAD DOCUMENTS
   // ==========================================================
 
   async function loadDocuments() {
+
     try {
+
       setLoading(true);
       setError("");
 
@@ -116,7 +121,9 @@ export default function Documents() {
             [];
 
       setDocuments(rows);
+
     } catch (err) {
+
       console.error(
         "LOAD DOCUMENTS ERROR:",
         err
@@ -126,19 +133,25 @@ export default function Documents() {
 
       setError(
         err.response?.data?.message ||
-          "Unable to load documents."
+        "Unable to load documents."
       );
+
     } finally {
+
       setLoading(false);
+
     }
   }
+
 
   // ==========================================================
   // OPEN DOCUMENT DETAILS
   // ==========================================================
 
   async function openDocument(id) {
+
     try {
+
       setDetailsLoading(true);
       setError("");
 
@@ -164,7 +177,9 @@ export default function Documents() {
       setSelectedDocument(
         document
       );
+
     } catch (err) {
+
       console.error(
         "LOAD DOCUMENT DETAILS ERROR:",
         err
@@ -172,26 +187,34 @@ export default function Documents() {
 
       setError(
         err.response?.data?.message ||
-          "Unable to load document details."
+        "Unable to load document details."
       );
+
     } finally {
+
       setDetailsLoading(false);
+
     }
   }
+
 
   // ==========================================================
   // INITIAL LOAD
   // ==========================================================
 
   useEffect(() => {
+
     loadDocuments();
+
   }, []);
+
 
   // ==========================================================
   // PROJECTS FROM CURRENT DATA
   // ==========================================================
 
   const projects = useMemo(() => {
+
     const values =
       documents
         .map(
@@ -212,13 +235,16 @@ export default function Documents() {
         Number(a) -
         Number(b)
     );
+
   }, [documents]);
+
 
   // ==========================================================
   // STATUSES FROM CURRENT DATA
   // ==========================================================
 
   const statuses = useMemo(() => {
+
     const values =
       documents
         .map(
@@ -236,7 +262,9 @@ export default function Documents() {
     return [
       ...new Set(values),
     ].sort();
+
   }, [documents]);
+
 
   // ==========================================================
   // FILTER DOCUMENTS
@@ -244,6 +272,7 @@ export default function Documents() {
 
   const filteredDocuments =
     useMemo(() => {
+
       const query =
         search
           .trim()
@@ -251,22 +280,23 @@ export default function Documents() {
 
       return documents.filter(
         (document) => {
+
           const documentNumber =
             String(
               document.document_number ||
-                ""
+              ""
             ).toLowerCase();
 
           const customerDocument =
             String(
               document.customer_document_number ||
-                ""
+              ""
             ).toLowerCase();
 
           const title =
             String(
               document.title ||
-                ""
+              ""
             ).toLowerCase();
 
           const matchesSearch =
@@ -294,9 +324,9 @@ export default function Documents() {
           const status =
             String(
               document.revision_status ||
-                document.status ||
-                document.current_status ||
-                ""
+              document.status ||
+              document.current_status ||
+              ""
             ).toUpperCase();
 
           const matchesStatus =
@@ -312,6 +342,7 @@ export default function Documents() {
           );
         }
       );
+
     }, [
       documents,
       search,
@@ -319,77 +350,40 @@ export default function Documents() {
       statusFilter,
     ]);
 
+
   // ==========================================================
   // RESET FILTERS
   // ==========================================================
 
   function resetFilters() {
+
     setSearch("");
     setProjectFilter("ALL");
     setStatusFilter("ALL");
+
   }
+
+
+  // ==========================================================
+  // ADD DOCUMENT
+  // ==========================================================
+
+  function handleAddDocument() {
+
+    alert(
+      "Document creation will be connected to your existing backend."
+    );
+
+  }
+
 
   // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
+
     <section className="documents-page">
-
-      {/* ====================================================
-          PAGE HEADER
-          ==================================================== */}
-
-      <div className="documents-page-header">
-
-        <div>
-
-          <p className="eyebrow">
-            DOCUMENT CONTROL
-          </p>
-
-          <h2>
-            Documents
-          </h2>
-
-          <p className="page-description">
-            Manage project documents,
-            revisions and current
-            document status.
-          </p>
-
-        </div>
-
-        <div className="documents-header-actions">
-
-          <button
-            className="refresh-button"
-            onClick={
-              loadDocuments
-            }
-            disabled={loading}
-          >
-            ↻ Refresh
-          </button>
-
-          <button
-            className="upload-button"
-            onClick={() =>
-              alert(
-                "Document creation will be connected to your existing backend."
-              )
-            }
-          >
-            <span>
-              ＋
-            </span>
-
-            Add Document
-          </button>
-
-        </div>
-
-      </div>
 
       {/* ====================================================
           ERROR
@@ -419,6 +413,7 @@ export default function Documents() {
         </div>
 
       )}
+
 
       {/* ====================================================
           SUMMARY CARDS
@@ -464,6 +459,7 @@ export default function Documents() {
 
       </div>
 
+
       {/* ====================================================
           DOCUMENT REGISTER
           ==================================================== */}
@@ -485,12 +481,31 @@ export default function Documents() {
 
           </div>
 
-          <span className="document-count">
-            {filteredDocuments.length}{" "}
-            documents
-          </span>
+
+          <div className="documents-toolbar-actions">
+
+            <span className="document-count">
+              {filteredDocuments.length}{" "}
+              documents
+            </span>
+
+            <button
+              className="upload-button"
+              onClick={
+                handleAddDocument
+              }
+            >
+              <span>
+                ＋
+              </span>
+
+              Add Document
+            </button>
+
+          </div>
 
         </div>
+
 
         {/* ==================================================
             FILTERS
@@ -531,6 +546,7 @@ export default function Documents() {
 
           </div>
 
+
           {/* PROJECT */}
 
           <select
@@ -562,6 +578,7 @@ export default function Documents() {
             )}
 
           </select>
+
 
           {/* STATUS */}
 
@@ -597,6 +614,7 @@ export default function Documents() {
 
           </select>
 
+
           {/* RESET */}
 
           {(search ||
@@ -617,6 +635,7 @@ export default function Documents() {
           )}
 
         </div>
+
 
         {/* ==================================================
             DOCUMENT TABLE
@@ -651,7 +670,8 @@ export default function Documents() {
               {documents.length ===
               0
                 ? "No documents are available for this project."
-                : "Try changing your search or filters."}
+                : "Try changing your search or filters."
+              }
             </span>
 
           </div>
@@ -704,6 +724,7 @@ export default function Documents() {
 
               </thead>
 
+
               <tbody>
 
                 {filteredDocuments.map(
@@ -736,6 +757,7 @@ export default function Documents() {
 
       </section>
 
+
       {/* ====================================================
           DETAILS LOADING
           ==================================================== */}
@@ -756,6 +778,7 @@ export default function Documents() {
         </section>
 
       )}
+
 
       {/* ====================================================
           DOCUMENT DETAILS
@@ -778,6 +801,7 @@ export default function Documents() {
         )}
 
     </section>
+
   );
 }
 
@@ -790,6 +814,7 @@ function DocumentRow({
   document,
   onView,
 }) {
+
   const status =
     document.revision_status ||
     document.status ||
@@ -802,6 +827,7 @@ function DocumentRow({
     "—";
 
   return (
+
     <tr>
 
       {/* DOCUMENT NUMBER */}
@@ -823,6 +849,7 @@ function DocumentRow({
 
       </td>
 
+
       {/* TITLE */}
 
       <td>
@@ -838,6 +865,7 @@ function DocumentRow({
 
       </td>
 
+
       {/* CUSTOMER DOCUMENT */}
 
       <td>
@@ -851,6 +879,7 @@ function DocumentRow({
 
       </td>
 
+
       {/* PROJECT */}
 
       <td>
@@ -863,6 +892,7 @@ function DocumentRow({
         </span>
 
       </td>
+
 
       {/* REVISION */}
 
@@ -878,6 +908,7 @@ function DocumentRow({
 
       </td>
 
+
       {/* STAGE */}
 
       <td>
@@ -888,6 +919,7 @@ function DocumentRow({
 
       </td>
 
+
       {/* STATUS */}
 
       <td>
@@ -897,6 +929,7 @@ function DocumentRow({
         />
 
       </td>
+
 
       {/* UPDATED */}
 
@@ -912,6 +945,7 @@ function DocumentRow({
 
       </td>
 
+
       {/* VIEW */}
 
       <td>
@@ -926,6 +960,7 @@ function DocumentRow({
       </td>
 
     </tr>
+
   );
 }
 
@@ -938,6 +973,7 @@ function DocumentDetails({
   document,
   onClose,
 }) {
+
   // ==========================================================
   // REVISION HISTORY
   // ==========================================================
@@ -952,6 +988,7 @@ function DocumentDetails({
     setLoadingRevisions,
   ] = useState(true);
 
+
   // ==========================================================
   // CURRENT REVISION
   // ==========================================================
@@ -965,6 +1002,7 @@ function DocumentDetails({
     loadingCurrentRevision,
     setLoadingCurrentRevision,
   ] = useState(true);
+
 
   // ==========================================================
   // LOAD REVISION HISTORY
@@ -1023,13 +1061,18 @@ function DocumentDetails({
         );
 
       }
+
     }
 
+
     if (document?.id) {
+
       loadRevisions();
+
     }
 
   }, [document]);
+
 
   // ==========================================================
   // LOAD CURRENT REVISION
@@ -1093,13 +1136,18 @@ function DocumentDetails({
         );
 
       }
+
     }
 
+
     if (document?.id) {
+
       loadCurrentRevision();
+
     }
 
   }, [document]);
+
 
   // ==========================================================
   // CURRENT REVISION CODE
@@ -1112,6 +1160,7 @@ function DocumentDetails({
     document?.revision ||
     "—";
 
+
   // ==========================================================
   // CURRENT REVISION STATUS
   // ==========================================================
@@ -1121,6 +1170,7 @@ function DocumentDetails({
     document?.revision_status ||
     document?.status ||
     "—";
+
 
   // ==========================================================
   // CURRENT REVISION STAGE
@@ -1133,11 +1183,13 @@ function DocumentDetails({
     document?.stage ||
     "—";
 
+
   // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
+
     <section className="panel document-details-panel">
 
       {/* ====================================================
@@ -1172,6 +1224,7 @@ function DocumentDetails({
         </button>
 
       </div>
+
 
       {/* ====================================================
           DOCUMENT METADATA
@@ -1232,6 +1285,7 @@ function DocumentDetails({
 
       </div>
 
+
       {/* ====================================================
           CURRENT REVISION CARD
           ==================================================== */}
@@ -1255,6 +1309,7 @@ function DocumentDetails({
           </div>
 
         </div>
+
 
         {loadingCurrentRevision ? (
 
@@ -1285,6 +1340,7 @@ function DocumentDetails({
 
             </div>
 
+
             <div className="current-revision-info">
 
               <div>
@@ -1301,6 +1357,7 @@ function DocumentDetails({
 
               </div>
 
+
               <div>
 
                 <label>
@@ -1315,6 +1372,7 @@ function DocumentDetails({
 
               </div>
 
+
               <div>
 
                 <label>
@@ -1328,6 +1386,7 @@ function DocumentDetails({
                 </strong>
 
               </div>
+
 
               <div>
 
@@ -1349,6 +1408,7 @@ function DocumentDetails({
         )}
 
       </div>
+
 
       {/* ====================================================
           REVISION HISTORY
@@ -1372,11 +1432,14 @@ function DocumentDetails({
           </div>
 
           <span className="document-count">
+
             {revisions.length}{" "}
             revisions
+
           </span>
 
         </div>
+
 
         {loadingRevisions ? (
 
@@ -1434,6 +1497,7 @@ function DocumentDetails({
       </div>
 
     </section>
+
   );
 }
 
@@ -1445,6 +1509,7 @@ function DocumentDetails({
 function RevisionRow({
   revision,
 }) {
+
   const status =
     revision.status ||
     "UNKNOWN";
@@ -1459,7 +1524,9 @@ function RevisionRow({
       revision.is_current
     );
 
+
   return (
+
     <div
       className={`revision-row ${
         isCurrent
@@ -1477,6 +1544,7 @@ function RevisionRow({
           "—"}
 
       </div>
+
 
       {/* REVISION INFORMATION */}
 
@@ -1500,6 +1568,7 @@ function RevisionRow({
 
       </div>
 
+
       {/* STATUS */}
 
       <div className="revision-status-column">
@@ -1520,6 +1589,7 @@ function RevisionRow({
 
       </div>
 
+
       {/* DATE */}
 
       <div className="revision-date">
@@ -1532,6 +1602,7 @@ function RevisionRow({
       </div>
 
     </div>
+
   );
 }
 
@@ -1545,7 +1616,9 @@ function DocumentMetric({
   value,
   icon,
 }) {
+
   return (
+
     <div className="document-metric">
 
       <div className="document-metric-icon">
@@ -1567,6 +1640,7 @@ function DocumentMetric({
       </div>
 
     </div>
+
   );
 }
 
@@ -1579,7 +1653,9 @@ function DetailItem({
   label,
   value,
 }) {
+
   return (
+
     <div className="detail-item">
 
       <label>
@@ -1591,6 +1667,7 @@ function DetailItem({
       </strong>
 
     </div>
+
   );
 }
 
@@ -1602,6 +1679,7 @@ function DetailItem({
 function DocumentStatus({
   status,
 }) {
+
   const normalized =
     String(
       status ||
@@ -1611,15 +1689,19 @@ function DocumentStatus({
   let className =
     "status-badge neutral";
 
+
   if (
     normalized ===
       "APPROVED" ||
     normalized ===
       "COMPLETED"
   ) {
+
     className =
       "status-badge success";
+
   }
+
 
   if (
     normalized ===
@@ -1631,9 +1713,12 @@ function DocumentStatus({
     normalized ===
       "PENDING"
   ) {
+
     className =
       "status-badge warning";
+
   }
+
 
   if (
     normalized ===
@@ -1641,21 +1726,29 @@ function DocumentStatus({
     normalized ===
       "FAILED"
   ) {
+
     className =
       "status-badge danger";
+
   }
 
+
   return (
+
     <span
       className={
         className
       }
     >
+
       {formatStatus(
         normalized
       )}
+
     </span>
+
   );
+
 }
 
 
@@ -1666,6 +1759,7 @@ function DocumentStatus({
 function StageBadge({
   stage,
 }) {
+
   const normalized =
     String(
       stage ||
@@ -1675,33 +1769,45 @@ function StageBadge({
   let className =
     "stage-badge";
 
+
   if (
     normalized ===
     "APPROVED"
   ) {
+
     className +=
       " stage-approved";
+
   }
+
 
   if (
     normalized ===
     "REVIEW"
   ) {
+
     className +=
       " stage-review";
+
   }
 
+
   return (
+
     <span
       className={
         className
       }
     >
+
       {formatStatus(
         normalized
       )}
+
     </span>
+
   );
+
 }
 
 
@@ -1712,6 +1818,7 @@ function StageBadge({
 function formatStatus(
   value
 ) {
+
   return String(
     value || ""
   )
@@ -1729,6 +1836,7 @@ function formatStatus(
       (letter) =>
         letter.toUpperCase()
     );
+
 }
 
 
@@ -1739,22 +1847,30 @@ function formatStatus(
 function formatDate(
   value
 ) {
+
   if (!value) {
+
     return "—";
+
   }
+
 
   const date =
     new Date(value);
+
 
   if (
     Number.isNaN(
       date.getTime()
     )
   ) {
+
     return String(
       value
     );
+
   }
+
 
   return date.toLocaleDateString(
     "en-GB",
@@ -1764,4 +1880,5 @@ function formatDate(
       year: "numeric",
     }
   );
+
 }
