@@ -93,6 +93,14 @@ async function createRevision(documentId, revisionData) {
       ]
     );
 
+    await client.query(
+      `UPDATE documents
+       SET current_revision_id = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [result.rows[0].id, documentId]
+    );
+
     await client.query("COMMIT");
 
     return result.rows[0];
@@ -383,6 +391,14 @@ async function createNextRevision(
         revision_date || null,
         created_by || null,
       ]
+    );
+
+    await client.query(
+      `UPDATE documents
+       SET current_revision_id = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [result.rows[0].id, documentId]
     );
 
     await client.query("COMMIT");

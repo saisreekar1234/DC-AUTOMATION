@@ -905,6 +905,169 @@ async function getCustomerResponseById(
 }
 
 
+
+// ======================================================
+// 5. MAP CUSTOMER RESPONSE TO INTERNAL DOCUMENT
+// ======================================================
+
+async function mapCustomerResponseToDocument(
+  itemId,
+  documentId
+) {
+
+  const client =
+    await pool.connect();
+
+  try {
+
+    await client.query("BEGIN");
+
+    const itemResult =
+      await client.query(
+        `
+          SELECT
+            cti.id,
+            cti.transmittal_id,
+            cti.document_id,
+            ct.project_id
+          FROM customer_transmittal_items cti
+          INNER JOIN customer_transmittals ct
+            ON ct.id = cti.transmittal_id
+          WHERE cti.id = $1
+          FOR UPDATE
+        `,
+        [itemId]
+      );
+
+    if (
+      itemResult.rows.length === 0
+    ) {
+
+      const error =
+        new Error(
+          "Customer transmittal item not found"
+        );
+
+      error.statusCode = 404;
+
+      throw error;
+    }
+
+    const item =
+      itemResult.rows[0];
+
+    if (
+      item.document_id &&
+      item.document_id !== Number(documentId)
+    ) {
+
+      const error =
+        new Error(
+          "This customer response is already mapped to an internal document"
+        );
+
+      error.statusCode = 409;
+
+      throw error;
+    }
+
+    const documentResult =
+      await client.query(
+        `
+          SELECT
+            id,
+            project_id,
+            document_number,
+            title
+          FROM documents
+          WHERE id = $1
+            AND is_active = TRUE
+          LIMIT 1
+        `,
+        [documentId]
+      );
+
+    if (
+      documentResult.rows.length === 0
+    ) {
+
+      const error =
+        new Error(
+          "Internal document not found"
+        );
+
+      error.statusCode = 404;
+
+      throw error;
+    }
+
+    const document =
+      documentResult.rows[0];
+
+    if (
+      Number(document.project_id) !==
+      Number(item.project_id)
+    ) {
+
+      const error =
+        new Error(
+          "Internal document does not belong to this project"
+        );
+
+      error.statusCode = 400;
+
+      throw error;
+    }
+
+    const result =
+      await client.query(
+        `
+          UPDATE customer_transmittal_items
+          SET
+            document_id = $1,
+            document_match_status = 'MATCHED',
+            response_processing_error = NULL
+          WHERE id = $2
+          RETURNING *
+        `,
+        [
+          document.id,
+          itemId,
+        ]
+      );
+
+    await client.query("COMMIT");
+
+    return {
+      ...result.rows[0],
+      internal_document:
+        document,
+    };
+
+  } catch (error) {
+
+    try {
+
+      await client.query(
+        "ROLLBACK"
+      );
+
+    } catch (rollbackError) {
+
+      console.error(
+        "Rollback error:",
+        rollbackError
+      );
+    }
+
+    throw error;
+
+  } finally {
+
+    client.release();
+  }
+}
+
 // ======================================================
 // EXPORT
 // ======================================================
@@ -918,4 +1081,6 @@ module.exports = {
   getCustomerResponsesByTransmittal,
 
   getCustomerResponseById,
+
+  mapCustomerResponseToDocument,
 };

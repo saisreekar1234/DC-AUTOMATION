@@ -7,6 +7,12 @@ const {
   getCurrentRevision,
 } = require("../controllers/documentController");
 
+const {
+  generateCoverPage,
+} = require("../controllers/coverPageController");
+
+const authMiddleware = require("../middleware/authMiddleware");
+
 const router = express.Router();
 
 
@@ -16,44 +22,55 @@ const router = express.Router();
 
 router.post(
   "/",
+  authMiddleware,
   createDocument
 );
 
 
 // ======================================================
-// GET ALL DOCUMENTS
+// GET DOCUMENTS
 // ======================================================
 
 router.get(
   "/",
+  authMiddleware,
   getDocuments
 );
 
 
 // ======================================================
 // GET CURRENT REVISION
-// IMPORTANT:
-// This must come BEFORE /:id
 // ======================================================
 
 router.get(
   "/:id/current-revision",
+  authMiddleware,
   getCurrentRevision
 );
 
 
 // ======================================================
-// GET DOCUMENT BY ID
+// GENERATE COVER PAGE PDF
+// IMPORTANT: THIS MUST COME BEFORE /:id
 // ======================================================
 
 router.get(
-  "/:id",
-  getDocumentById
+  "/:id/cover-page",
+  authMiddleware,
+  generateCoverPage
 );
 
 
 // ======================================================
-// EXPORT
+// GET DOCUMENT BY ID
+// IMPORTANT: KEEP THIS LAST
 // ======================================================
+
+router.get(
+  "/:id",
+  authMiddleware,
+  getDocumentById
+);
+
 
 module.exports = router;

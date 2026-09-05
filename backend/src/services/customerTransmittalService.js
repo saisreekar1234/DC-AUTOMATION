@@ -492,6 +492,50 @@ async function getCustomerTransmittals(
 
 
 // ======================================================
+// GET CUSTOMER TRANSMITTALS FOR USER
+// ======================================================
+
+async function getCustomerTransmittalsForUser(userId) {
+  const result = await pool.query(
+    `
+      SELECT
+        ct.id,
+        ct.project_id,
+        ct.file_name,
+        ct.file_path,
+        ct.customer_name,
+        ct.transmittal_reference,
+        TO_CHAR(ct.transmittal_date, 'YYYY-MM-DD') AS transmittal_date,
+        ct.analysis_status,
+        ct.uploaded_at,
+        ct.uploaded_by,
+        ct.analyzed_at,
+        ct.analysis_error,
+        ct.created_at,
+        COUNT(cti.id)::INTEGER AS item_count,
+        COUNT(CASE WHEN cti.document_match_status = 'MATCHED' THEN 1 END)::INTEGER AS matched_count,
+        COUNT(CASE WHEN cti.document_match_status = 'UNMATCHED_DOCUMENT' THEN 1 END)::INTEGER AS unmatched_count,
+        COUNT(CASE WHEN cti.response_processed = TRUE THEN 1 END)::INTEGER AS processed_count
+      FROM customer_transmittals ct
+      INNER JOIN project_members pm
+        ON pm.project_id = ct.project_id
+      INNER JOIN projects p
+        ON p.id = ct.project_id
+      LEFT JOIN customer_transmittal_items cti
+        ON cti.transmittal_id = ct.id
+      WHERE pm.user_id = $1
+        AND p.is_active = TRUE
+      GROUP BY ct.id
+      ORDER BY ct.id DESC
+    `,
+    [userId]
+  );
+
+  return result.rows;
+}
+
+
+// ======================================================
 // 4. GET ONE CUSTOMER TRANSMITTAL
 // ======================================================
 
@@ -604,5 +648,6 @@ module.exports = {
   saveTransmittal,
   analyseTransmittal,
   getCustomerTransmittals,
+  getCustomerTransmittalsForUser,
   getCustomerTransmittalById,
 };

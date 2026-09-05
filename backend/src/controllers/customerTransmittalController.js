@@ -1,6 +1,31 @@
 const customerTransmittalService =
   require("../services/customerTransmittalService");
 
+const projectMemberService =
+  require("../services/projectMemberService");
+
+function isAdmin(req) {
+  return String(req.user?.role || "").toLowerCase() === "admin";
+}
+
+async function ensureProjectAccess(req, res, projectId) {
+  if (isAdmin(req)) return true;
+
+  const access = await projectMemberService.hasProjectAccess(
+    projectId,
+    req.user.user_id
+  );
+
+  if (!access) {
+    res.status(403).json({
+      message: "You do not have access to this project",
+    });
+    return false;
+  }
+
+  return true;
+}
+
 
 // ======================================================
 // 1. UPLOAD CUSTOMER TRANSMITTAL
@@ -29,6 +54,10 @@ async function uploadTransmittal(req, res) {
         message:
           "project_id is required",
       });
+    }
+
+    if (!(await ensureProjectAccess(req, res, projectId))) {
+      return;
     }
 
 
@@ -75,6 +104,19 @@ async function analyseTransmittal(
 
   try {
 
+    const existing =
+      await customerTransmittalService
+        .getCustomerTransmittalById(
+          req.params.id
+        );
+
+    const transmittal =
+      existing.transmittal || existing;
+
+    if (!(await ensureProjectAccess(req, res, transmittal.project_id))) {
+      return;
+    }
+
     const result =
       await customerTransmittalService
         .analyseTransmittal(
@@ -114,12 +156,25 @@ async function getCustomerTransmittals(
     const projectId =
       req.query.project_id;
 
+    let transmittals;
 
-    const transmittals =
-      await customerTransmittalService
-        .getCustomerTransmittals(
-          projectId
-        );
+    if (isAdmin(req)) {
+      transmittals =
+        await customerTransmittalService
+          .getCustomerTransmittals(projectId);
+    } else if (projectId) {
+      if (!(await ensureProjectAccess(req, res, projectId))) {
+        return;
+      }
+
+      transmittals =
+        await customerTransmittalService
+          .getCustomerTransmittals(projectId);
+    } else {
+      transmittals =
+        await customerTransmittalService
+          .getCustomerTransmittalsForUser(req.user.user_id);
+    }
 
 
     res.json(
@@ -158,6 +213,13 @@ async function getCustomerTransmittalById(
         .getCustomerTransmittalById(
           req.params.id
         );
+
+    const transmittal =
+      result.transmittal || result;
+
+    if (!(await ensureProjectAccess(req, res, transmittal.project_id))) {
+      return;
+    }
 
 
     res.json(result);

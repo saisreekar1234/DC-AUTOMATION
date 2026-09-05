@@ -1,65 +1,74 @@
 const express = require("express");
 
+const authMiddleware =
+  require("../middleware/authMiddleware");
+
 const {
-
   processCustomerResponse,
-
   processCustomerTransmittal,
-
   getCustomerResponsesByTransmittal,
-
   getCustomerResponseById,
+  mapCustomerResponseToDocument,
+} = require("../controllers/customerResponseController");
 
-} = require(
-  "../controllers/customerResponseController"
-);
 
 const router =
   express.Router();
 
 
 // ======================================================
-// 1. GET CUSTOMER RESPONSES FOR ENTIRE TRANSMITTAL
+// GET CUSTOMER RESPONSES FOR TRANSMITTAL
 // ======================================================
 
 router.get(
   "/transmittal/:transmittalId",
+  authMiddleware,
   getCustomerResponsesByTransmittal
 );
 
 
 // ======================================================
-// 2. GET ONE CUSTOMER RESPONSE
+// GET ONE CUSTOMER RESPONSE
 // ======================================================
 
 router.get(
   "/item/:itemId",
+  authMiddleware,
   getCustomerResponseById
 );
 
 
 // ======================================================
-// 3. PROCESS ENTIRE TRANSMITTAL
+// PROCESS ENTIRE TRANSMITTAL
 // ======================================================
 
 router.post(
   "/transmittal/:transmittalId",
+  authMiddleware,
   processCustomerTransmittal
 );
 
 
 // ======================================================
-// 4. PROCESS ONE RESPONSE
+// PROCESS ONE CUSTOMER RESPONSE
 // ======================================================
 
 router.post(
   "/item/:itemId",
+  authMiddleware,
   processCustomerResponse
 );
 
 
 // ======================================================
-// EXPORT ROUTER
+// MAP CUSTOMER RESPONSE TO INTERNAL DOCUMENT
 // ======================================================
+
+router.post(
+  "/item/:itemId/map-document",
+  authMiddleware,
+  mapCustomerResponseToDocument
+);
+
 
 module.exports = router;

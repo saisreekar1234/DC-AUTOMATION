@@ -1,5 +1,8 @@
 const express = require("express");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const requireRole = require("../middleware/roleMiddleware");
+
 const {
   createProject,
   getProjects,
@@ -8,8 +11,23 @@ const {
 
 const router = express.Router();
 
-router.post("/", createProject);
-router.get("/", getProjects);
-router.get("/:id", getProjectById);
+router.post(
+  "/",
+  authMiddleware,
+  requireRole("admin"),
+  createProject
+);
+
+router.get(
+  "/",
+  authMiddleware,
+  getProjects
+);
+
+router.get(
+  "/:id",
+  authMiddleware,
+  getProjectById
+);
 
 module.exports = router;

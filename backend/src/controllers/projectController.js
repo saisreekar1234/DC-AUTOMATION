@@ -1,4 +1,5 @@
 const projectService = require("../services/projectService");
+const projectMemberService = require("../services/projectMemberService");
 
 async function createProject(req, res) {
   try {
@@ -16,7 +17,11 @@ async function createProject(req, res) {
 
 async function getProjects(req, res) {
   try {
-    const projects = await projectService.getProjects();
+    // Admins can see every project. Other users can see only projects assigned to them.
+    const projects =
+      String(req.user?.role || "").toLowerCase() === "admin"
+        ? await projectService.getProjects()
+        : await projectMemberService.getProjectsForUser(req.user.user_id);
 
     res.json(projects);
   } catch (error) {
@@ -36,6 +41,21 @@ async function getProjectById(req, res) {
       return res.status(404).json({
         message: "Project not found",
       });
+    }
+
+    const isAdmin = String(req.user?.role || "").toLowerCase() === "admin";
+
+    if (!isAdmin) {
+      const access = await projectMemberService.hasProjectAccess(
+        project.id,
+        req.user.user_id
+      );
+
+      if (!access) {
+        return res.status(403).json({
+          message: "You do not have access to this project",
+        });
+      }
     }
 
     res.json(project);

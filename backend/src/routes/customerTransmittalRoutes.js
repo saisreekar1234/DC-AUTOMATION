@@ -1,5 +1,6 @@
 const express = require("express");
 const multer = require("multer");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const {
   uploadTransmittal,
@@ -56,17 +57,8 @@ const upload = multer({
 
 router.get(
   "/",
+  authMiddleware,
   getCustomerTransmittals
-);
-
-
-// ======================================================
-// 2. GET ONE CUSTOMER TRANSMITTAL
-// ======================================================
-
-router.get(
-  "/:id",
-  getCustomerTransmittalById
 );
 
 
@@ -76,6 +68,7 @@ router.get(
 
 router.post(
   "/upload",
+  authMiddleware,
   upload.single("transmittal"),
   uploadTransmittal
 );
@@ -87,7 +80,19 @@ router.post(
 
 router.get(
   "/:id/analyse",
+  authMiddleware,
   analyseTransmittal
+);
+
+
+// ======================================================
+// 2. GET ONE CUSTOMER TRANSMITTAL
+// ======================================================
+
+router.get(
+  "/:id",
+  authMiddleware,
+  getCustomerTransmittalById
 );
 
 

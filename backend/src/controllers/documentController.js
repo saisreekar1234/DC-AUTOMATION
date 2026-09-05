@@ -1,4 +1,5 @@
 const documentService = require("../services/documentService");
+const projectMemberService = require("../services/projectMemberService");
 
 
 // ======================================================
@@ -38,28 +39,43 @@ async function createDocument(req, res) {
 
 async function getDocuments(req, res) {
   try {
+    const projectId = req.query.project_id;
+    const isAdmin =
+      String(req.user?.role || "").toLowerCase() === "admin";
 
-    const projectId =
-      req.query.project_id;
+    // Project Details: return only the selected project.
+    if (projectId) {
+      if (!isAdmin) {
+        const access =
+          await projectMemberService.hasProjectAccess(
+            projectId,
+            req.user.user_id
+          );
 
-    if (!projectId) {
-      return res.status(400).json({
-        message: "project_id is required",
-      });
+        if (!access) {
+          return res.status(403).json({
+            message: "You do not have access to this project",
+          });
+        }
+      }
+
+      const documents =
+        await documentService.getDocuments(projectId);
+
+      return res.json(documents);
     }
 
-    const documents =
-      await documentService.getDocuments(
-        projectId
-      );
+    // Global Documents page: administrators see all documents;
+    // normal users see only documents from their assigned projects.
+    const documents = isAdmin
+      ? await documentService.getDocuments()
+      : await documentService.getDocumentsForUser(req.user.user_id);
 
-    res.json(documents);
-
+    return res.json(documents);
   } catch (error) {
-
     console.error(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to fetch documents",
     });
   }
