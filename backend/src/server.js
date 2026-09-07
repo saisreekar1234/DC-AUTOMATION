@@ -36,6 +36,9 @@ const userRoutes =
 const projectMemberRoutes =
   require("./routes/projectMemberRoutes");
 
+const projectCoverPageTemplateRoutes =
+  require("./routes/projectCoverPageTemplateRoutes");
+  
 
 
   
@@ -87,6 +90,10 @@ app.use(
   projectMemberRoutes
 );
 
+app.use(
+  "/api/project-cover-page-templates",
+  projectCoverPageTemplateRoutes
+);
 
 
 app.get("/", (req, res) => {

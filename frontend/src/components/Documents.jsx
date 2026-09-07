@@ -4,26 +4,9 @@ import {
   useState,
 } from "react";
 
-import axios from "axios";
+import api from "../services/api";
 
-const API_BASE_URL =
-  "http://localhost:5000/api";
-
-// ============================================================
-// DEFAULT PROJECT
-// ============================================================
-//
-// Your backend currently requires project_id when loading
-// documents.
-//
-// We will make this dynamic later when we connect the
-// projectRoutes API.
-//
-// ============================================================
-
-const DEFAULT_PROJECT_ID = 1;
-
-export default function Documents() {
+export default function Documents({ projectId = null }) {
 
   // ==========================================================
   // DOCUMENT STATE
@@ -31,6 +14,12 @@ export default function Documents() {
 
   const [documents, setDocuments] =
     useState([]);
+
+  const [projects, setProjects] =
+    useState([]);
+
+  const [projectsLoading, setProjectsLoading] =
+    useState(false);
 
   const [
     selectedDocument,
@@ -78,15 +67,29 @@ export default function Documents() {
       setLoading(true);
       setError("");
 
+      // Global Documents page:
+      //   GET /documents
+      //
+      // Project Details page:
+      //   GET /documents?project_id=<actual project id>
+      //
+      // IMPORTANT:
+      // Never use a hard-coded project ID here.
+      const scopedProjectId =
+        projectId?.id ??
+        projectId ??
+        null;
+
       const response =
-        await axios.get(
-          `${API_BASE_URL}/documents`,
-          {
-            params: {
-              project_id:
-                DEFAULT_PROJECT_ID,
-            },
-          }
+        await api.get(
+          "/documents",
+          scopedProjectId !== null && scopedProjectId !== undefined
+            ? {
+                params: {
+                  project_id: scopedProjectId,
+                },
+              }
+            : undefined
         );
 
       const payload =
@@ -162,8 +165,8 @@ export default function Documents() {
        */
 
       const response =
-        await axios.get(
-          `${API_BASE_URL}/documents/${id}`
+        await api.get(
+          `/documents/${id}`
         );
 
       const payload =
@@ -204,65 +207,98 @@ export default function Documents() {
 
   useEffect(() => {
 
+    async function loadProjects() {
+      try {
+        setProjectsLoading(true);
+
+        const response = await api.get("/projects");
+        const payload = response.data;
+
+        const rows =
+          Array.isArray(payload)
+            ? payload
+            : payload?.projects ||
+              payload?.data ||
+              payload?.rows ||
+              [];
+
+        const normalized = rows
+          .map((project) => ({
+            id: project.id,
+            code: project.project_code || `Project ${project.id}`,
+            name: project.project_name || "",
+          }))
+          .filter((project) => project.id !== null && project.id !== undefined);
+
+        setProjects(normalized);
+      } catch (err) {
+        console.error("LOAD PROJECTS ERROR:", err);
+        setProjects([]);
+      } finally {
+        setProjectsLoading(false);
+      }
+    }
+
+    loadProjects();
     loadDocuments();
 
-  }, []);
+  }, [projectId]);
 
 
   // ==========================================================
-  // PROJECTS FROM CURRENT DATA
+  // PROJECT-SCOPED MODE
   // ==========================================================
 
-  const projects = useMemo(() => {
+  const scopedProjectId =
+    projectId?.id ??
+    projectId ??
+    null;
 
-    const values =
-      documents
-        .map(
-          (item) =>
-            item.project_id
-        )
-        .filter(
-          (value) =>
-            value !== null &&
-            value !== undefined &&
-            value !== ""
-        );
+  const isProjectScoped =
+    scopedProjectId !== null &&
+    scopedProjectId !== undefined;
 
-    return [
-      ...new Set(values),
-    ].sort(
-      (a, b) =>
-        Number(a) -
-        Number(b)
-    );
-
-  }, [documents]);
+  useEffect(() => {
+    if (isProjectScoped) {
+      setProjectFilter(String(scopedProjectId));
+    } else {
+      setProjectFilter("ALL");
+    }
+  }, [isProjectScoped, scopedProjectId]);
 
 
   // ==========================================================
-  // STATUSES FROM CURRENT DATA
+  // STATUS FILTER OPTIONS
   // ==========================================================
+
 
   const statuses = useMemo(() => {
+    const standardStatuses = [
+      "PENDING",
+      "SUBMITTED",
+      "UNDER_REVIEW",
+      "COMMENTED",
+      "APPROVED",
+      "REJECTED",
+      "COMPLETED",
+      "IN_PROGRESS",
+      "FAILED",
+    ];
 
-    const values =
-      documents
-        .map(
-          (item) =>
-            item.revision_status ||
-            item.status ||
-            item.current_status
-        )
-        .filter(Boolean)
-        .map((value) =>
-          String(value)
-            .toUpperCase()
-        );
+    const backendStatuses = documents
+      .map((document) => getDocumentStatus(document))
+      .filter(
+        (status) =>
+          status &&
+          status !== "UNKNOWN"
+      );
 
     return [
-      ...new Set(values),
-    ].sort();
-
+      ...new Set([
+        ...standardStatuses,
+        ...backendStatuses,
+      ]),
+    ];
   }, [documents]);
 
 
@@ -270,85 +306,43 @@ export default function Documents() {
   // FILTER DOCUMENTS
   // ==========================================================
 
-  const filteredDocuments =
-    useMemo(() => {
+  const filteredDocuments = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-      const query =
-        search
-          .trim()
-          .toLowerCase();
+    return documents.filter((document) => {
+      const searchableValues = [
+        document.document_number,
+        document.customer_document_number,
+        document.vendor_document_number,
+        document.title,
+        document.description,
+        document.project_code,
+        document.project_name,
+        document.line_number,
+      ]
+        .filter((value) => value !== null && value !== undefined)
+        .map((value) => String(value).toLowerCase());
 
-      return documents.filter(
-        (document) => {
+      const matchesSearch =
+        !query || searchableValues.some((value) => value.includes(query));
 
-          const documentNumber =
-            String(
-              document.document_number ||
-              ""
-            ).toLowerCase();
+      const matchesProject =
+        projectFilter === "ALL" ||
+        String(document.project_id) === String(projectFilter);
 
-          const customerDocument =
-            String(
-              document.customer_document_number ||
-              ""
-            ).toLowerCase();
+      const status = getDocumentStatus(document);
 
-          const title =
-            String(
-              document.title ||
-              ""
-            ).toLowerCase();
+      const matchesStatus =
+        statusFilter === "ALL" || status === statusFilter;
 
-          const matchesSearch =
-            !query ||
-            documentNumber.includes(
-              query
-            ) ||
-            customerDocument.includes(
-              query
-            ) ||
-            title.includes(
-              query
-            );
-
-          const matchesProject =
-            projectFilter ===
-              "ALL" ||
-            String(
-              document.project_id
-            ) ===
-              String(
-                projectFilter
-              );
-
-          const status =
-            String(
-              document.revision_status ||
-              document.status ||
-              document.current_status ||
-              ""
-            ).toUpperCase();
-
-          const matchesStatus =
-            statusFilter ===
-              "ALL" ||
-            status ===
-              statusFilter;
-
-          return (
-            matchesSearch &&
-            matchesProject &&
-            matchesStatus
-          );
-        }
-      );
-
-    }, [
-      documents,
-      search,
-      projectFilter,
-      statusFilter,
-    ]);
+      return matchesSearch && matchesProject && matchesStatus;
+    });
+  }, [
+    documents,
+    search,
+    projectFilter,
+    statusFilter,
+  ]);
 
 
   // ==========================================================
@@ -358,7 +352,13 @@ export default function Documents() {
   function resetFilters() {
 
     setSearch("");
-    setProjectFilter("ALL");
+
+    setProjectFilter(
+      isProjectScoped
+        ? String(scopedProjectId)
+        : "ALL"
+    );
+
     setStatusFilter("ALL");
 
   }
@@ -450,6 +450,8 @@ export default function Documents() {
           value={
             documents.filter(
               (item) =>
+                item.current_revision_record_id ||
+                item.current_revision_code ||
                 item.current_revision_id ||
                 item.revision_code
             ).length
@@ -549,35 +551,34 @@ export default function Documents() {
 
           {/* PROJECT */}
 
-          <select
-            value={
-              projectFilter
-            }
-            onChange={(event) =>
-              setProjectFilter(
-                event.target.value
-              )
-            }
-          >
+          {!isProjectScoped && (
+            <select
+              value={
+                projectFilter
+              }
+              onChange={(event) =>
+                setProjectFilter(
+                  event.target.value
+                )
+              }
+            >
 
-            <option value="ALL">
-              All Projects
-            </option>
+              <option value="ALL">
+                All Projects
+              </option>
 
-            {projects.map(
-              (project) => (
-
+              {projects.map((project) => (
                 <option
-                  key={project}
-                  value={project}
+                  key={project.id}
+                  value={project.id}
                 >
-                  Project {project}
+                  {project.code}
+                  {project.name ? ` — ${project.name}` : ""}
                 </option>
+              ))}
 
-              )
-            )}
-
-          </select>
+            </select>
+          )}
 
 
           {/* STATUS */}
@@ -669,7 +670,7 @@ export default function Documents() {
             <span>
               {documents.length ===
               0
-                ? "No documents are available for this project."
+                ? "No documents are available in your accessible projects."
                 : "Try changing your search or filters."
               }
             </span>
@@ -815,15 +816,13 @@ function DocumentRow({
   onView,
 }) {
 
-  const status =
-    document.revision_status ||
-    document.status ||
-    document.current_status ||
-    "UNKNOWN";
+  const status = getDocumentStatus(document);
 
   const stage =
-    document.revision_stage ||
-    document.stage ||
+    document.current_revision_stage ??
+    document.current_revision_stage_value ??
+    document.revision_stage ??
+    document.stage ??
     "—";
 
   return (
@@ -886,7 +885,9 @@ function DocumentRow({
 
         <span className="project-badge">
 
-          {document.project_id ??
+          {document.project_code ||
+            document.project_name ||
+            document.project_id ||
             "—"}
 
         </span>
@@ -900,7 +901,8 @@ function DocumentRow({
 
         <span className="revision-badge">
 
-          {document.revision_code ||
+          {document.current_revision_code ||
+            document.revision_code ||
             document.revision ||
             "—"}
 
@@ -1003,6 +1005,11 @@ function DocumentDetails({
     setLoadingCurrentRevision,
   ] = useState(true);
 
+  const [
+    coverPageLoading,
+    setCoverPageLoading,
+  ] = useState(false);
+
 
   // ==========================================================
   // LOAD REVISION HISTORY
@@ -1025,8 +1032,8 @@ function DocumentDetails({
          */
 
         const response =
-          await axios.get(
-            `${API_BASE_URL}/revisions/${document.id}`
+          await api.get(
+            `/revisions/${document.id}`
           );
 
         const payload =
@@ -1095,8 +1102,8 @@ function DocumentDetails({
          */
 
         const response =
-          await axios.get(
-            `${API_BASE_URL}/documents/${document.id}/current-revision`
+          await api.get(
+            `/documents/${document.id}/current-revision`
           );
 
         const payload =
@@ -1147,6 +1154,85 @@ function DocumentDetails({
     }
 
   }, [document]);
+
+
+  // ==========================================================
+  // GENERATE COVER PAGE PDF
+  // ==========================================================
+
+  async function generateCoverPage() {
+
+    // Open the tab immediately so the browser does not block it
+    // as a popup after the asynchronous API request.
+    const pdfWindow = window.open("", "_blank");
+
+    try {
+
+      setCoverPageLoading(true);
+
+      const response = await api.get(
+        `/documents/${document.id}/cover-page`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob(
+        [response.data],
+        {
+          type: "application/pdf",
+        }
+      );
+
+      const url = URL.createObjectURL(blob);
+
+      if (pdfWindow) {
+        pdfWindow.location.href = url;
+      } else {
+        window.open(url, "_blank");
+      }
+
+      // Keep the object URL alive long enough for the PDF viewer
+      // to load it, then release it from browser memory.
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 60000);
+
+    } catch (error) {
+
+      console.error(
+        "GENERATE COVER PAGE ERROR:",
+        error
+      );
+
+      if (pdfWindow && !pdfWindow.closed) {
+        pdfWindow.close();
+      }
+
+      let message =
+        error.response?.data?.message ||
+        "Unable to generate the cover page PDF.";
+
+      // Axios returns an error body as a Blob when responseType is blob.
+      // Try to extract the backend error message when available.
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const payload = JSON.parse(text);
+          message = payload?.message || message;
+        } catch {
+          // Keep the default message if the error body is not JSON.
+        }
+      }
+
+      alert(message);
+
+    } finally {
+
+      setCoverPageLoading(false);
+
+    }
+  }
 
 
   // ==========================================================
@@ -1216,12 +1302,26 @@ function DocumentDetails({
 
         </div>
 
-        <button
-          className="close-button"
-          onClick={onClose}
-        >
-          Close
-        </button>
+        <div className="document-details-header-actions">
+
+          <button
+            className="secondary-action-button"
+            onClick={generateCoverPage}
+            disabled={coverPageLoading}
+          >
+            {coverPageLoading
+              ? "Generating PDF..."
+              : "Generate Cover Page PDF"}
+          </button>
+
+          <button
+            className="close-button"
+            onClick={onClose}
+          >
+            Close
+          </button>
+
+        </div>
 
       </div>
 
@@ -1608,6 +1708,23 @@ function RevisionRow({
 
 
 // ============================================================
+// DOCUMENT STATUS
+// ============================================================
+
+function getDocumentStatus(document) {
+  return String(
+    document?.current_revision_status ??
+      document?.revision_status ??
+      document?.current_status ??
+      document?.status ??
+      "UNKNOWN"
+  )
+    .trim()
+    .toUpperCase();
+}
+
+
+// ============================================================
 // DOCUMENT METRIC
 // ============================================================
 
@@ -1707,11 +1824,19 @@ function DocumentStatus({
     normalized ===
       "REVIEW" ||
     normalized ===
+      "UNDER_REVIEW" ||
+    normalized ===
+      "UNDER REVIEW" ||
+    normalized ===
       "IN_PROGRESS" ||
     normalized ===
       "IN PROGRESS" ||
     normalized ===
-      "PENDING"
+      "SUBMITTED" ||
+    normalized ===
+      "PENDING" ||
+    normalized ===
+      "COMMENTED"
   ) {
 
     className =

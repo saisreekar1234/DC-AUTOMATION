@@ -5,6 +5,9 @@ import {
 } from "react";
 
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
+import ProjectCoverPageSettings from "./ProjectCoverPageSettings";
+import ProjectTransmittals from "./ProjectTransmittals";
 import "./project.css";
 
 const API_BASE_URL =
@@ -891,6 +894,7 @@ function ProjectDetails({
   project,
   onBack,
 }) {
+  const { user } = useAuth();
 
   const [
     activeTab,
@@ -1187,6 +1191,19 @@ function ProjectDetails({
           Team
         </button>
 
+        <button
+          className={
+            activeTab === "cover-page"
+              ? "project-tab active"
+              : "project-tab"
+          }
+          onClick={() =>
+            setActiveTab("cover-page")
+          }
+        >
+          Cover Page
+        </button>
+
       </div>
 
       {activeTab === "overview" && (
@@ -1383,6 +1400,12 @@ function ProjectDetails({
 
       {activeTab === "team" && (
         <ProjectTeam />
+      )}
+
+      {activeTab === "cover-page" && (
+        <ProjectCoverPageSettings
+          project={project}
+        />
       )}
 
     </section>

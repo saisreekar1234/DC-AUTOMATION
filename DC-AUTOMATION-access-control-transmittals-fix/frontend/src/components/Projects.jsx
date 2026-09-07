@@ -4,9 +4,10 @@ import {
   useState,
 } from "react";
 
-import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import ProjectCoverPageSettings from "./ProjectCoverPageSettings";
 import ProjectTransmittals from "./ProjectTransmittals";
+import api from "../services/api";
 import "./project.css";
 
 // ============================================================
@@ -14,8 +15,6 @@ import "./project.css";
 // ============================================================
 
 export default function Projects() {
-  const { isAdmin } = useAuth();
-
   const [projects, setProjects] =
     useState([]);
 
@@ -64,7 +63,7 @@ export default function Projects() {
 
       const response =
         await api.get(
-          `/projects`
+          "/projects"
         );
 
       const payload =
@@ -193,11 +192,6 @@ export default function Projects() {
   ) {
     event.preventDefault();
 
-    if (!isAdmin) {
-      setError("Only administrators can create projects.");
-      return;
-    }
-
     const projectCode =
       createForm.project_code.trim();
 
@@ -230,7 +224,7 @@ export default function Projects() {
 
       const response =
         await api.post(
-          `/projects`,
+          "/projects",
           {
             project_code:
               projectCode,
@@ -340,26 +334,24 @@ export default function Projects() {
             ↻ Refresh
           </button>
 
-          {isAdmin && (
-            <button
-              className="upload-button"
-              onClick={() => {
-                setError("");
+          <button
+            className="upload-button"
+            onClick={() => {
+              setError("");
 
-                setCreateForm({
-                  project_code: "",
-                  project_name: "",
-                  client_name: "",
-                  description: "",
-                });
+              setCreateForm({
+                project_code: "",
+                project_name: "",
+                client_name: "",
+                description: "",
+              });
 
-                setShowCreateModal(true);
-              }}
-            >
-              <span>＋</span>
-              New Project
-            </button>
-          )}
+              setShowCreateModal(true);
+            }}
+          >
+            <span>＋</span>
+            New Project
+          </button>
 
         </div>
       </div>
@@ -899,6 +891,7 @@ function ProjectDetails({
   project,
   onBack,
 }) {
+  const { user } = useAuth();
 
   const [
     activeTab,
@@ -936,7 +929,7 @@ function ProjectDetails({
 
       const response =
         await api.get(
-          `/documents`,
+          "/documents",
           {
             params: {
               project_id:
@@ -973,22 +966,19 @@ function ProjectDetails({
   }
 
   // ==========================================================
-  // LOAD PROJECT DOCUMENTS
-  //
-  // Load once when this project is opened, rather than only
-  // when the Documents tab is clicked. This is important because
-  // the Workflow tab uses the same project document list.
+  // LOAD WHEN DOCUMENT TAB OPENS
   // ==========================================================
 
   useEffect(() => {
-    // Clear project-specific state before loading the newly selected project.
-    setDocuments([]);
-    setSelectedDocument(null);
-
-    if (project?.id) {
+    if (
+      activeTab === "documents"
+    ) {
       loadDocuments();
     }
-  }, [project?.id]);
+  }, [
+    activeTab,
+    project.id,
+  ]);
 
   // ==========================================================
   // DOCUMENT PREFIXES
@@ -1198,6 +1188,19 @@ function ProjectDetails({
           Team
         </button>
 
+        <button
+          className={
+            activeTab === "cover-page"
+              ? "project-tab active"
+              : "project-tab"
+          }
+          onClick={() =>
+            setActiveTab("cover-page")
+          }
+        >
+          Cover Page
+        </button>
+
       </div>
 
       {activeTab === "overview" && (
@@ -1394,6 +1397,12 @@ function ProjectDetails({
 
       {activeTab === "team" && (
         <ProjectTeam />
+      )}
+
+      {activeTab === "cover-page" && (
+        <ProjectCoverPageSettings
+          project={project}
+        />
       )}
 
     </section>
@@ -1814,7 +1823,7 @@ function DocumentDetails({
 
       const response =
         await api.get(
-          `/revisions/${document.id}`
+          "/revisions/" + document.id
         );
 
       const payload =
@@ -2528,7 +2537,6 @@ function ProjectWorkflow({
 
   }, [
     selectedDocumentId,
-    documents,
   ]);
 
   async function loadRevisions(
@@ -2542,7 +2550,7 @@ function ProjectWorkflow({
 
       const response =
         await api.get(
-          `/revisions/${documentId}`
+          "/revisions/" + documentId
         );
 
       const payload =
@@ -2559,29 +2567,11 @@ function ProjectWorkflow({
       setRevisions(rows);
 
       if (rows.length > 0) {
-        const selectedDocument = documents.find(
-          (document) =>
-            String(document.id) === String(documentId)
-        );
-
-        const currentRevisionId =
-          selectedDocument?.current_revision_id ||
-          selectedDocument?.current_revision_record_id;
-
-        const currentRevision = currentRevisionId
-          ? rows.find(
-              (revision) =>
-                String(revision.id) === String(currentRevisionId)
-            )
-          : null;
-
-        // Prefer the document's real current revision.
-        // If it is not set, use the latest returned revision.
-        const defaultRevision =
-          currentRevision || rows[rows.length - 1];
 
         setSelectedRevisionId(
-          String(defaultRevision.id)
+          String(
+            rows[0].id
+          )
         );
 
       } else {
@@ -2596,9 +2586,6 @@ function ProjectWorkflow({
         "REVISION LOAD ERROR:",
         err
       );
-
-      setRevisions([]);
-      setSelectedRevisionId("");
 
       setWorkflowError(
         err.response?.data?.message ||
@@ -2645,7 +2632,7 @@ function ProjectWorkflow({
 
       const response =
         await api.get(
-          `/signatures/documents/${selectedDocumentId}/revisions/${selectedRevisionId}/workflow`
+          "/signatures/documents/" + selectedDocumentId + "/revisions/" + selectedRevisionId + "/workflow"
         );
 
       const payload =
@@ -2700,7 +2687,7 @@ function ProjectWorkflow({
       setWorkflowError("");
 
       await api.post(
-        `/signatures/documents/${selectedDocumentId}/revisions/${selectedRevisionId}/workflow`
+        "/signatures/documents/" + selectedDocumentId + "/revisions/" + selectedRevisionId + "/workflow"
       );
 
       await loadWorkflow();

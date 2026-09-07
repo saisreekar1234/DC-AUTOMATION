@@ -1,0 +1,9 @@
+// Add with the other route imports in backend/src/server.js
+const projectCoverPageTemplateRoutes =
+  require("./routes/projectCoverPageTemplateRoutes");
+
+// Add with the other app.use(...) route mounts
+app.use(
+  "/api/project-cover-page-templates",
+  projectCoverPageTemplateRoutes
+);
