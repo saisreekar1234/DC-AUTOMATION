@@ -262,6 +262,56 @@ async function resetUserPassword(
 
 
 // ======================================================
+// CURRENT USER PROFILE
+// ======================================================
+
+async function getMe(req, res) {
+  try {
+    const user = await userService.getUserById(req.user.user_id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ user });
+  } catch (error) {
+    console.error("GET OWN PROFILE ERROR:", error);
+    res.status(500).json({ message: error.message || "Failed to fetch profile" });
+  }
+}
+
+async function updateMe(req, res) {
+  try {
+    const user = await userService.updateOwnProfile(req.user.user_id, req.body);
+    res.json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    console.error("UPDATE OWN PROFILE ERROR:", error);
+    res.status(400).json({ message: error.message || "Failed to update profile" });
+  }
+}
+
+async function changeMyPassword(req, res) {
+  try {
+    await userService.changeOwnPassword(
+      req.user.user_id,
+      req.body.currentPassword,
+      req.body.newPassword,
+    );
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("CHANGE OWN PASSWORD ERROR:", error);
+    res.status(400).json({ message: error.message || "Failed to change password" });
+  }
+}
+
+async function deactivateUser(req, res) {
+  try {
+    const user = await userService.deactivateUser(req.params.id, req.user.user_id);
+    res.json({ message: "User account disabled successfully", user });
+  } catch (error) {
+    console.error("DEACTIVATE USER ERROR:", error);
+    res.status(400).json({ message: error.message || "Failed to disable user" });
+  }
+}
+
+
+// ======================================================
 // EXPORT
 // ======================================================
 
@@ -276,5 +326,9 @@ module.exports = {
   updateUser,
 
   resetUserPassword,
+  getMe,
+  updateMe,
+  changeMyPassword,
+  deactivateUser,
 
 };

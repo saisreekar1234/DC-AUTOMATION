@@ -126,6 +126,8 @@ async function createUser(
   const allowedRoles = [
     "admin",
     "document_controller",
+    "checker",
+    "approver",
   ];
 
 
@@ -252,6 +254,8 @@ async function updateUser(
   const allowedRoles = [
     "admin",
     "document_controller",
+    "checker",
+    "approver",
   ];
 
 
@@ -409,6 +413,66 @@ async function resetUserPassword(
 
 
 // ======================================================
+// CURRENT USER PROFILE
+// ======================================================
+
+async function updateOwnProfile(userId, user) {
+  const name = String(user?.name || "").trim();
+  const email = String(user?.email || "").trim();
+
+  if (!name) throw new Error("Name is required");
+  if (!email) throw new Error("Email is required");
+
+  const existing = await pool.query(
+    `SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id <> $2 LIMIT 1`,
+    [email, userId],
+  );
+  if (existing.rows.length) throw new Error("A user with this email already exists");
+
+  const result = await pool.query(
+    `UPDATE users SET name = $1, email = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3
+     RETURNING id, name, email, role, is_active, created_at, updated_at`,
+    [name, email, userId],
+  );
+  if (!result.rows.length) throw new Error("User not found");
+  return result.rows[0];
+}
+
+async function changeOwnPassword(userId, currentPassword, newPassword) {
+  if (!currentPassword) throw new Error("Current password is required");
+  if (!newPassword || newPassword.length < 8) throw new Error("New password must contain at least 8 characters");
+
+  const result = await pool.query(`SELECT password_hash FROM users WHERE id = $1 LIMIT 1`, [userId]);
+  if (!result.rows.length) throw new Error("User not found");
+
+  const valid = await bcrypt.compare(currentPassword, result.rows[0].password_hash);
+  if (!valid) throw new Error("Current password is incorrect");
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await pool.query(
+    `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+    [passwordHash, userId],
+  );
+
+  return true;
+}
+
+async function deactivateUser(userId, requestingUserId) {
+  if (Number(userId) === Number(requestingUserId)) {
+    throw new Error("You cannot disable your own administrator account");
+  }
+
+  const result = await pool.query(
+    `UPDATE users SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1
+     RETURNING id, name, email, role, is_active, created_at, updated_at`,
+    [userId],
+  );
+  if (!result.rows.length) throw new Error("User not found");
+  return result.rows[0];
+}
+
+
+// ======================================================
 // EXPORT
 // ======================================================
 
@@ -423,5 +487,8 @@ module.exports = {
   updateUser,
 
   resetUserPassword,
+  updateOwnProfile,
+  changeOwnPassword,
+  deactivateUser,
 
 };

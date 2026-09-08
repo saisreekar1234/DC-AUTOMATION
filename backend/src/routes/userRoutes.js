@@ -8,6 +8,10 @@ const {
   createUser,
   updateUser,
   resetUserPassword,
+  getMe,
+  updateMe,
+  changeMyPassword,
+  deactivateUser,
 } =
   require(
     "../controllers/userController"
@@ -28,6 +32,15 @@ const requireRole =
 
 const router =
   express.Router();
+
+
+// ======================================================
+// CURRENT USER PROFILE
+// ======================================================
+
+router.get("/me", authMiddleware, getMe);
+router.patch("/me", authMiddleware, updateMe);
+router.post("/me/change-password", authMiddleware, changeMyPassword);
 
 
 // ======================================================
@@ -92,6 +105,18 @@ router.post(
   authMiddleware,
   requireRole("admin"),
   resetUserPassword
+);
+
+
+// ======================================================
+// DISABLE USER
+// ======================================================
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireRole("admin"),
+  deactivateUser,
 );
 
 
