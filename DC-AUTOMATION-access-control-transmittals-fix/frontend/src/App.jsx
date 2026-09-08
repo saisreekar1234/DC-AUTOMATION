@@ -8,6 +8,8 @@ import api from "./services/api";
 import { useAuth } from "./context/AuthContext";
 
 import "./App.css";
+import "./dashboard.css";
+import "./professional-ui.css";
 
 import Documents from "./components/Documents";
 import Projects from "./components/Projects";
@@ -25,6 +27,7 @@ function App() {
     user,
     loading: authLoading,
     logout,
+    updateUser,
   } = useAuth();
 
   // ==========================================================
@@ -35,7 +38,6 @@ function App() {
     activePage,
     setActivePage,
   ] = useState("dashboard");
-
 
   // ==========================================================
   // TRANSMITTALS
@@ -61,10 +63,31 @@ function App() {
     setDetailsLoading,
   ] = useState(false);
 
+  // ==========================================================
+  // DASHBOARD
+  // ==========================================================
+
+  const [dashboardProjects, setDashboardProjects] = useState([]);
+  const [dashboardUsers, setDashboardUsers] = useState([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardUsersAvailable, setDashboardUsersAvailable] = useState(true);
+
   const [
     error,
     setError,
   ] = useState("");
+
+  // ==========================================================
+  // PROFILE MENU
+  // ==========================================================
+
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileMode, setProfileMode] = useState("view");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: "", email: "" });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [profileNotice, setProfileNotice] = useState("");
 
 
   // ==========================================================
@@ -98,9 +121,6 @@ function App() {
 
   const fileInputRef =
     useRef(null);
-
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   // ==========================================================
   // LOAD TRANSMITTALS
@@ -146,6 +166,47 @@ function App() {
 
       setLoading(false);
 
+    }
+  }
+
+
+  // ==========================================================
+  // LOAD DASHBOARD DATA
+  // ==========================================================
+
+  async function loadDashboardData() {
+    try {
+      setDashboardLoading(true);
+
+      const [projectsResult, usersResult] = await Promise.allSettled([
+        api.get("/projects"),
+        api.get("/users"),
+      ]);
+
+      if (projectsResult.status === "fulfilled") {
+        const payload = projectsResult.value.data;
+        const rows = Array.isArray(payload)
+          ? payload
+          : payload?.projects || payload?.data || [];
+        setDashboardProjects(rows);
+      } else {
+        console.error("LOAD DASHBOARD PROJECTS ERROR:", projectsResult.reason);
+      }
+
+      if (usersResult.status === "fulfilled") {
+        const payload = usersResult.value.data;
+        const rows = Array.isArray(payload)
+          ? payload
+          : payload?.users || payload?.data || [];
+        setDashboardUsers(rows);
+        setDashboardUsersAvailable(true);
+      } else {
+        setDashboardUsers([]);
+        setDashboardUsersAvailable(false);
+        console.error("LOAD DASHBOARD USERS ERROR:", usersResult.reason);
+      }
+    } finally {
+      setDashboardLoading(false);
     }
   }
 
@@ -477,9 +538,71 @@ function App() {
     }
 
     loadTransmittals();
+    loadDashboardData();
 
   }, [user]);
 
+
+  function openProfile(mode = "view") {
+    setProfileMenuOpen(false);
+    setProfileMode(mode);
+    setProfileNotice("");
+    setError("");
+    setProfileForm({
+      name: user?.name || user?.full_name || "",
+      email: user?.email || "",
+    });
+    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setProfileModalOpen(true);
+  }
+
+  async function saveProfile(event) {
+    event.preventDefault();
+    try {
+      setProfileSaving(true);
+      setError("");
+      const response = await api.patch("/users/me", {
+        name: profileForm.name.trim(),
+        email: profileForm.email.trim(),
+      });
+      const updatedUser = response.data?.user;
+      if (!updatedUser) throw new Error("Updated profile was not returned by the server.");
+      updateUser(updatedUser);
+      setProfileNotice("Profile updated successfully.");
+      setProfileMode("view");
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Unable to update profile.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function changePassword(event) {
+    event.preventDefault();
+    if (passwordForm.newPassword.length < 8) {
+      setError("New password must contain at least 8 characters.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+    try {
+      setProfileSaving(true);
+      setError("");
+      await api.post("/users/me/change-password", {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setProfileNotice("Password changed successfully.");
+      setProfileMode("view");
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Unable to change password.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   // ==========================================================
   // PAGE TITLE
@@ -525,12 +648,6 @@ function App() {
   ) {
 
     setError("");
-
-    // User administration is an admin-only area.
-    if (page === "users" && user?.role !== "admin") {
-      setActivePage("dashboard");
-      return;
-    }
 
     setActivePage(page);
 
@@ -602,21 +719,38 @@ function App() {
             <button
               type="button"
               className="refresh-button"
-              onClick={loadTransmittals}
-              disabled={loading}
-              title="Refresh transmittals"
+              onClick={
+                activePage === "dashboard"
+                  ? loadDashboardData
+                  : loadTransmittals
+              }
+              disabled={
+                activePage === "dashboard"
+                  ? dashboardLoading
+                  : loading
+              }
+              title={
+                activePage === "dashboard"
+                  ? "Refresh dashboard"
+                  : "Refresh transmittals"
+              }
             >
 
-              {loading ? "↻ Loading..." : "↻ Refresh"}
+              {activePage === "dashboard"
+                ? dashboardLoading
+                  ? "↻ Loading..."
+                  : "↻ Refresh"
+                : loading
+                  ? "↻ Loading..."
+                  : "↻ Refresh"}
 
             </button>
 
           )}
 
 
-          {/* USER PROFILE MENU */}
+          {/* PROFILE */}
           <div className="profile-menu-wrapper">
-
             <button
               type="button"
               className="topbar-user profile-trigger"
@@ -624,104 +758,45 @@ function App() {
               aria-expanded={profileMenuOpen}
               aria-haspopup="menu"
             >
-
               <div className="topbar-user-avatar">
-                {(
-                  user?.name ||
-                  user?.full_name ||
-                  user?.email ||
-                  "U"
-                ).charAt(0).toUpperCase()}
+                {(user?.name || user?.full_name || user?.email || "U").charAt(0).toUpperCase()}
               </div>
-
               <div className="topbar-user-info">
-                <strong>
-                  {user?.name ||
-                    user?.full_name ||
-                    user?.email ||
-                    "User"}
-                </strong>
-                <span>
-                  {user?.role || "Document Controller"}
-                </span>
+                <strong>{user?.name || user?.full_name || user?.email || "User"}</strong>
+                <span>{user?.role || "Document Controller"}</span>
               </div>
-
-              <span className={`profile-chevron ${profileMenuOpen ? "open" : ""}`}>⌄</span>
-
+              <span className="profile-chevron">⌄</span>
             </button>
 
             {profileMenuOpen && (
               <div className="profile-menu" role="menu">
-
                 <div className="profile-menu-header">
-                  <div className="profile-menu-avatar">
-                    {(user?.name || user?.full_name || user?.email || "U").charAt(0).toUpperCase()}
-                  </div>
+                  <div className="profile-menu-avatar">{(user?.name || user?.email || "U").charAt(0).toUpperCase()}</div>
                   <div>
-                    <strong>
-                      {user?.name || user?.full_name || user?.email || "User"}
-                    </strong>
-                    <span>
-                      {user?.role || "Document Controller"}
-                    </span>
+                    <strong>{user?.name || user?.email || "User"}</strong>
+                    <span>{user?.email || ""}</span>
                   </div>
                 </div>
-
                 <div className="profile-menu-divider" />
-
-                <button
-                  type="button"
-                  className="profile-menu-item"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    setProfileModalOpen(true);
-                  }}
-                  role="menuitem"
-                >
-                  <span>◉</span>
-                  <div>
-                    <strong>My Profile</strong>
-                    <small>View your account details</small>
-                  </div>
+                <button type="button" className="profile-menu-item" onClick={() => openProfile("view")} role="menuitem">
+                  <span className="profile-menu-icon">◎</span>
+                  <div><strong>My Profile</strong><small>View account details</small></div>
                 </button>
-
-                <button
-                  type="button"
-                  className="profile-menu-item"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    navigateTo("settings");
-                  }}
-                  role="menuitem"
-                >
-                  <span>⚙</span>
-                  <div>
-                    <strong>Settings</strong>
-                    <small>Application preferences</small>
-                  </div>
+                <button type="button" className="profile-menu-item" onClick={() => openProfile("edit")} role="menuitem">
+                  <span className="profile-menu-icon">✎</span>
+                  <div><strong>Edit Profile</strong><small>Update your name and email</small></div>
                 </button>
-
+                <button type="button" className="profile-menu-item" onClick={() => openProfile("password")} role="menuitem">
+                  <span className="profile-menu-icon">▣</span>
+                  <div><strong>Change Password</strong><small>Update your sign-in password</small></div>
+                </button>
                 <div className="profile-menu-divider" />
-
-                <button
-                  type="button"
-                  className="profile-menu-item profile-menu-signout"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    logout();
-                  }}
-                  role="menuitem"
-                >
-                  <span>↪</span>
-                  <div>
-                    <strong>Sign out</strong>
-                    <small>End this session</small>
-                  </div>
+                <button type="button" className="profile-menu-item profile-menu-signout" onClick={logout} role="menuitem">
+                  <span className="profile-menu-icon">↪</span>
+                  <div><strong>Sign out</strong><small>End this session</small></div>
                 </button>
-
               </div>
             )}
-
           </div>
 
         </div>
@@ -733,62 +808,54 @@ function App() {
           PROFILE MODAL
           ================================================== */}
       {profileModalOpen && (
-        <div
-          className="profile-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setProfileModalOpen(false);
-            }
-          }}
-        >
-          <section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
-
+        <div className="profile-modal-backdrop" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !profileSaving) setProfileModalOpen(false);
+        }}>
+          <section className="profile-modal" role="dialog" aria-modal="true">
             <div className="profile-modal-header">
               <div>
                 <p className="eyebrow">ACCOUNT</p>
-                <h3 id="profile-title">My Profile</h3>
-                <p>View the account currently signed in to Document Control.</p>
+                <h3>{profileMode === "password" ? "Change Password" : profileMode === "edit" ? "Edit Profile" : "My Profile"}</h3>
+                <p>{profileMode === "password" ? "Keep your Document Control account secure." : "Manage the account details used to access the workspace."}</p>
               </div>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setProfileModalOpen(false)}
-                aria-label="Close profile"
-              >
-                ×
-              </button>
+              <button type="button" className="modal-close" onClick={() => setProfileModalOpen(false)} disabled={profileSaving}>×</button>
             </div>
 
-            <div className="profile-modal-body">
-              <div className="profile-large-avatar">
-                {(user?.name || user?.full_name || user?.email || "U").charAt(0).toUpperCase()}
+            {profileNotice && <div className="profile-notice">{profileNotice}</div>}
+
+            {profileMode === "view" && (
+              <div className="profile-modal-body">
+                <div className="profile-identity-block">
+                  <div className="profile-large-avatar">{(user?.name || user?.email || "U").charAt(0).toUpperCase()}</div>
+                  <div><h4>{user?.name || user?.email || "User"}</h4><span>{formatRole(user?.role)}</span></div>
+                </div>
+                <div className="profile-details-grid">
+                  <ProfileDetail label="Full name" value={user?.name || user?.full_name || "—"} />
+                  <ProfileDetail label="Email" value={user?.email || "—"} />
+                  <ProfileDetail label="Role" value={formatRole(user?.role)} />
+                  <ProfileDetail label="User ID" value={user?.id ?? "—"} />
+                </div>
               </div>
+            )}
 
-              <div className="profile-identity">
-                <h4>
-                  {user?.name || user?.full_name || "User"}
-                </h4>
-                <span>{user?.role || "Document Controller"}</span>
-              </div>
+            {profileMode === "edit" && (
+              <form className="profile-form" onSubmit={saveProfile}>
+                <label>Full name<input value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} required /></label>
+                <label>Email address<input type="email" value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} required /></label>
+                <div className="profile-readonly-row"><span>Role</span><strong>{formatRole(user?.role)}</strong><small>Role changes are controlled by an administrator.</small></div>
+                <div className="profile-modal-footer"><button type="button" className="secondary-action" onClick={() => setProfileMode("view")}>Cancel</button><button type="submit" className="primary-action" disabled={profileSaving}>{profileSaving ? "Saving..." : "Save Changes"}</button></div>
+              </form>
+            )}
 
-              <div className="profile-details-grid">
-                <ProfileDetail label="Full name" value={user?.name || user?.full_name || "—"} />
-                <ProfileDetail label="Email" value={user?.email || "—"} />
-                <ProfileDetail label="Role" value={user?.role || "Document Controller"} />
-                <ProfileDetail label="User ID" value={user?.id ?? "—"} />
-              </div>
-            </div>
-
-            <div className="profile-modal-footer">
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={() => setProfileModalOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-
+            {profileMode === "password" && (
+              <form className="profile-form" onSubmit={changePassword}>
+                <label>Current password<input type="password" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} required /></label>
+                <label>New password<input type="password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} minLength="8" required /></label>
+                <label>Confirm new password<input type="password" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} minLength="8" required /></label>
+                <p className="profile-security-note">Use at least 8 characters. Your current password is required before the change is accepted.</p>
+                <div className="profile-modal-footer"><button type="button" className="secondary-action" onClick={() => setProfileMode("view")}>Cancel</button><button type="submit" className="primary-action" disabled={profileSaving}>{profileSaving ? "Updating..." : "Change Password"}</button></div>
+              </form>
+            )}
           </section>
         </div>
       )}
@@ -835,154 +902,136 @@ function App() {
       {activePage ===
         "dashboard" && (
 
-        <section className="content">
+        <section className="content dashboard-content">
 
+          <div className="dashboard-welcome">
+            <div>
+              <p className="eyebrow">DOCUMENT CONTROL</p>
+              <h3>Workspace Overview</h3>
+              <p>
+                A clear view of your projects, team and document-control workspace.
+              </p>
+            </div>
 
-          {/* SUMMARY */}
-
-          <div className="summary-grid">
-
-            <SummaryCard
-              title="Total Transmittals"
-              value={
-                transmittals.length
-              }
-              icon="▤"
-            />
-
-            <SummaryCard
-              title="Analysed"
-              value={
-                transmittals.filter(
-                  (item) =>
-                    String(
-                      item.analysis_status ||
-                        ""
-                    ).toUpperCase() ===
-                    "ANALYSED"
-                ).length
-              }
-              icon="✓"
-            />
-
-            <SummaryCard
-              title="Documents"
-              value={
-                transmittals.reduce(
-                  (
-                    total,
-                    item
-                  ) =>
-                    total +
-                    Number(
-                      item.item_count ||
-                        0
-                    ),
-                  0
-                )
-              }
-              icon="▦"
-            />
-
-            <SummaryCard
-              title="Processed"
-              value={
-                transmittals.reduce(
-                  (
-                    total,
-                    item
-                  ) =>
-                    total +
-                    Number(
-                      item.processed_count ||
-                        0
-                    ),
-                  0
-                )
-              }
-              icon="↗"
-            />
-
+            <div className="dashboard-live-indicator">
+              <span className="dashboard-live-dot"></span>
+              Live workspace
+            </div>
           </div>
 
-
-          {/* DASHBOARD PANEL */}
-
-          <section className="panel">
-
-            <div className="panel-header">
-
+          <div className="dashboard-metrics">
+            <div className="dashboard-metric-card dashboard-metric-projects">
+              <div className="dashboard-metric-icon">▦</div>
               <div>
-
-                <p className="eyebrow">
-                  DOCUMENT CONTROL
-                </p>
-
-                <h3>
-                  Dashboard
-                </h3>
-
-                <p>
-                  Monitor document
-                  control activity,
-                  projects,
-                  transmittals and
-                  processing status.
-                </p>
-
+                <span>Projects</span>
+                <strong>{dashboardLoading ? "—" : dashboardProjects.length}</strong>
+                <small>Accessible workspace projects</small>
               </div>
-
-
-              <button
-                className="upload-button"
-                onClick={() => {
-
-                  setActivePage(
-                    "transmittals"
-                  );
-
-                  openUploadModal();
-
-                }}
-              >
-
-                <span>
-                  ＋
-                </span>
-
-                Upload Transmittal
-
-              </button>
-
             </div>
 
+            <div className="dashboard-metric-card dashboard-metric-users">
+              <div className="dashboard-metric-icon">♙</div>
+              <div>
+                <span>Users</span>
+                <strong>
+                  {dashboardUsersAvailable
+                    ? dashboardLoading
+                      ? "—"
+                      : dashboardUsers.length
+                    : "—"}
+                </strong>
+                <small>Registered system users</small>
+              </div>
+            </div>
+          </div>
 
-            <div className="empty-state">
-
-              <div className="empty-icon">
-                ✓
+          <div className="dashboard-overview-grid">
+            <section className="dashboard-card">
+              <div className="dashboard-card-header">
+                <div>
+                  <p className="dashboard-card-kicker">PORTFOLIO</p>
+                  <h4>Projects</h4>
+                  <span>Your accessible project workspace</span>
+                </div>
+                <button
+                  type="button"
+                  className="dashboard-link-button"
+                  onClick={() => navigateTo("projects")}
+                >
+                  View projects →
+                </button>
               </div>
 
-              <strong>
-                Document Control
-                Automation
-              </strong>
+              <div className="dashboard-project-list">
+                {dashboardLoading ? (
+                  <div className="dashboard-list-placeholder">Loading projects...</div>
+                ) : dashboardProjects.length === 0 ? (
+                  <div className="dashboard-list-placeholder">No projects available.</div>
+                ) : (
+                  dashboardProjects.map((project) => {
+                    const active = project.is_active !== false;
+                    return (
+                      <div className="dashboard-project-row" key={project.id}>
+                        <div className="dashboard-project-mark">
+                          {String(project.project_code || "P").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="dashboard-project-main">
+                          <strong>{project.project_name || project.name || "Unnamed project"}</strong>
+                          <span>{project.project_code || `Project ${project.id}`}</span>
+                        </div>
+                        <span className={active ? "dashboard-status active" : "dashboard-status"}>
+                          {active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </section>
 
-              <span>
-                Use the navigation to
-                manage documents,
-                projects and customer
-                transmittals.
-              </span>
+            <section className="dashboard-card">
+              <div className="dashboard-card-header">
+                <div>
+                  <p className="dashboard-card-kicker">ADMINISTRATION</p>
+                  <h4>Administrators</h4>
+                  <span>People with system administration access</span>
+                </div>
+                <div className="dashboard-count-pill">
+                  {dashboardUsersAvailable
+                    ? dashboardUsers.filter((item) => String(item.role || "").toLowerCase() === "admin").length
+                    : "—"}
+                </div>
+              </div>
 
-            </div>
-
-          </section>
+              <div className="dashboard-admin-list">
+                {!dashboardUsersAvailable ? (
+                  <div className="dashboard-list-placeholder">Administrator details are restricted for this account.</div>
+                ) : dashboardLoading ? (
+                  <div className="dashboard-list-placeholder">Loading administrators...</div>
+                ) : dashboardUsers.filter((item) => String(item.role || "").toLowerCase() === "admin").length === 0 ? (
+                  <div className="dashboard-list-placeholder">No administrators found.</div>
+                ) : (
+                  dashboardUsers
+                    .filter((item) => String(item.role || "").toLowerCase() === "admin")
+                    .map((admin) => (
+                      <div className="dashboard-admin-row" key={admin.id}>
+                        <div className="dashboard-admin-avatar">
+                          {(admin.name || admin.full_name || admin.email || "A").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="dashboard-admin-main">
+                          <strong>{admin.name || admin.full_name || "Unnamed administrator"}</strong>
+                          <span>{admin.email || "No email available"}</span>
+                        </div>
+                        <span className="dashboard-role-badge">Admin</span>
+                      </div>
+                    ))
+                )}
+              </div>
+            </section>
+          </div>
 
         </section>
-
       )}
-
 
       {/* ==================================================
           DOCUMENTS
@@ -1486,15 +1535,8 @@ function App() {
       {/* ==================================================
           ADMIN — USERS
           ================================================== */}
-
-      {activePage === "users" && user?.role === "admin" && (
-
-        <section className="content">
-
-          <Users />
-
-        </section>
-
+      {activePage === "users" && String(user?.role || "").toLowerCase() === "admin" && (
+        <section className="content"><Users /></section>
       )}
 
 
@@ -2035,16 +2077,6 @@ function App() {
 
     </Layout>
 
-  );
-}
-
-
-function ProfileDetail({ label, value }) {
-  return (
-    <div className="profile-detail">
-      <label>{label}</label>
-      <strong>{value}</strong>
-    </div>
   );
 }
 
@@ -2661,6 +2693,30 @@ function Metadata({
 
   );
 
+}
+
+
+// ============================================================
+// PROFILE HELPERS
+// ============================================================
+
+function formatRole(role) {
+  const roles = {
+    admin: "Administrator",
+    document_controller: "Document Controller",
+    checker: "Checker",
+    approver: "Approver",
+  };
+  return roles[String(role || "").toLowerCase()] || role || "User";
+}
+
+function ProfileDetail({ label, value }) {
+  return (
+    <div className="profile-detail-item">
+      <label>{label}</label>
+      <strong>{value}</strong>
+    </div>
+  );
 }
 
 

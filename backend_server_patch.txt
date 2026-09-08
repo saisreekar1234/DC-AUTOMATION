@@ -1,0 +1,5 @@
+// Add near your other route imports in backend/src/server.js
+const projectCoverPageConfigRoutes = require("./routes/projectCoverPageConfigRoutes");
+
+// Add near your other app.use(...) API routes
+app.use("/api/project-cover-page-configs", projectCoverPageConfigRoutes);

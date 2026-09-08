@@ -1,52 +1,38 @@
-# Cover Page Template Permission Change
+# Cover Page Creation V1
 
-## Permission model
+This version turns the existing project-specific cover-page upload into a configurable, data-driven Cover Page Creation module.
 
-- Admin: can view, upload, and replace the cover-page template for every project.
-- Project user/member: can view, upload, and replace the cover-page template for projects they have access to.
-- User without project access: cannot view the Cover Page tab through an authorized project and receives HTTP 403 if they call the API directly.
+## Supported dynamic sources
 
-## Important
+- Project Name
+- Project Code
+- Client / Customer
+- Document Number
+- Document Title
+- Customer Document Number
+- Vendor Document Number
+- Document Type
+- Current Revision
+- Current Stage
+- Current Status
+- Issue Purpose
+- Revision Date
+- Latest Transmittal Reference
+- Customer Name
+- Prepared By
+- Reviewed / Checked By
+- Approved By
 
-The current cover-page template is a PDF template, not an Excel file.
-Excel-based project configuration can be added later as a separate configuration feature.
+## Supported table
 
-## Frontend
+Revision History can be positioned per project and is populated from the real `revisions` records.
 
-Replace:
-`frontend/src/components/Projects.jsx`
-with the generated `Projects.jsx` file.
+## Design principle
 
-Replace:
-`frontend/src/components/ProjectCoverPageSettings.jsx`
-with the generated file.
+The PDF is the visual template. PostgreSQL is the source of truth for document/revision/workflow data. JSON configuration determines which live values are written where.
 
-Keep:
-`frontend/src/components/project-cover-page.css`
+This allows Mozambique LNG and ADNOC/Sulzer to use different layouts, logos, labels and tables while using the same generation engine.
 
-## Backend
+## Next planned layer
 
-Copy:
-- projectCoverPageTemplateController.js -> backend/src/controllers/
-- projectCoverPageTemplateService.js -> backend/src/services/
-- projectCoverPageTemplateRoutes.js -> backend/src/routes/
-
-Keep this in backend/src/server.js:
-
-const projectCoverPageTemplateRoutes =
-  require("./routes/projectCoverPageTemplateRoutes");
-
-app.use(
-  "/api/project-cover-page-templates",
-  projectCoverPageTemplateRoutes
-);
-
-## Database
-
-Run project_cover_page_template_upload.sql in the same PostgreSQL database used by the application.
-
-## Dependencies
-
-The cover-page generation service uses pdf-lib. Install it in backend if not already installed:
-
-npm install pdf-lib
+The next iteration should replace numeric X/Y editing with a visual drag-and-drop designer and add configurable logo/image placement and arbitrary table definitions.

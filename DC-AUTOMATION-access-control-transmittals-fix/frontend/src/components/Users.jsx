@@ -11,9 +11,13 @@ const EMPTY_FORM = {
 };
 
 function displayRole(role) {
-  if (role === "admin") return "Administrator";
-  if (role === "document_controller") return "Document Controller";
-  return role || "—";
+  const roles = {
+    admin: "Administrator",
+    document_controller: "Document Controller",
+    checker: "Checker",
+    approver: "Approver",
+  };
+  return roles[String(role || "").toLowerCase()] || role || "—";
 }
 
 function formatDate(value) {
@@ -41,6 +45,7 @@ function Users() {
   const [passwordModal, setPasswordModal] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [projectModal, setProjectModal] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [assignedProjects, setAssignedProjects] = useState([]);
   const [assignmentPermissions, setAssignmentPermissions] = useState({});
   const [assignmentLoading, setAssignmentLoading] = useState(false);
@@ -130,6 +135,35 @@ function Users() {
       await loadUsers();
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Unable to save user.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deactivateUser(user) {
+    try {
+      setSaving(true);
+      setError("");
+      await api.delete(`/users/${user.id}`);
+      setConfirmAction(null);
+      setNotice(`Account for ${user.name || user.email} has been disabled.`);
+      await loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Unable to disable user.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reactivateUser(user) {
+    try {
+      setSaving(true);
+      setError("");
+      await api.patch(`/users/${user.id}`, { is_active: true });
+      setNotice(`Account for ${user.name || user.email} has been reactivated.`);
+      await loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Unable to reactivate user.");
     } finally {
       setSaving(false);
     }
@@ -326,6 +360,11 @@ function Users() {
                     <button onClick={() => openEdit(item)}>Edit</button>
                     <button onClick={() => openProjectAssignment(item)}>Projects</button>
                     <button onClick={() => { setPasswordModal(item); setNewPassword(""); setError(""); }}>Reset password</button>
+                    {item.is_active ? (
+                      <button className="danger-action" onClick={() => setConfirmAction({ type: "disable", user: item })}>Disable</button>
+                    ) : (
+                      <button className="success-action" onClick={() => reactivateUser(item)} disabled={saving}>Reactivate</button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -346,7 +385,7 @@ function Users() {
                 <label>Full name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>
                 <label>Email address<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label>
                 {userModal.mode === "create" && <label>Password<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength="8" required /></label>}
-                <label>Role<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option value="document_controller">Document Controller</option><option value="admin">Administrator</option></select></label>
+                <label>Role<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option value="document_controller">Document Controller</option><option value="admin">Administrator</option><option value="checker">Checker</option><option value="approver">Approver</option></select></label>
               </div>
               {userModal.mode === "edit" && <label className="user-toggle"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /><span><strong>Account active</strong><small>Disabled users cannot authenticate.</small></span></label>}
               <div className="users-modal-footer"><button type="button" className="secondary-action" onClick={() => setUserModal(null)}>Cancel</button><button type="submit" className="primary-action" disabled={saving}>{saving ? "Saving..." : "Save User"}</button></div>
@@ -373,6 +412,19 @@ function Users() {
           </section>
         </div>
       )}
+      {confirmAction && (
+        <div className="users-modal-backdrop" onMouseDown={() => !saving && setConfirmAction(null)}>
+          <section className="users-modal small" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="users-modal-header">
+              <div><p className="eyebrow">ACCOUNT CONTROL</p><h4>Disable user account?</h4><span>This prevents the user from signing in. Existing documents and audit history remain intact.</span></div>
+              <button type="button" onClick={() => setConfirmAction(null)}>×</button>
+            </div>
+            <div className="confirm-copy"><strong>{confirmAction.user.name || confirmAction.user.email}</strong><span>{confirmAction.user.email}</span></div>
+            <div className="users-modal-footer"><button type="button" className="secondary-action" onClick={() => setConfirmAction(null)}>Cancel</button><button type="button" className="danger-primary" onClick={() => deactivateUser(confirmAction.user)} disabled={saving}>{saving ? "Disabling..." : "Disable Account"}</button></div>
+          </section>
+        </div>
+      )}
+
     </section>
   );
 }

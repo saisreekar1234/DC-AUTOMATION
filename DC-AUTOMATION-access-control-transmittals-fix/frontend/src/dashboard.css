@@ -360,3 +360,38 @@
     align-items: flex-start;
   }
 }
+
+/* =========================================================
+   WARM THEME / DARK MODE OVERRIDES
+   ========================================================= */
+.dashboard-welcome {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(59,130,246,0.07), transparent 30%),
+    linear-gradient(135deg, var(--dc-surface, #fffdf7) 0%, var(--dc-surface-2, #fbf8ef) 100%) !important;
+  border-color: var(--dc-border, #d8d1c2) !important;
+}
+
+.dashboard-metric-card,
+.dashboard-card {
+  background: var(--dc-surface, #fffdf7) !important;
+  border-color: var(--dc-border, #d8d1c2) !important;
+}
+
+.dashboard-card-header,
+.dashboard-project-row,
+.dashboard-admin-row {
+  border-color: var(--dc-divider, #ded7c9) !important;
+}
+
+.dashboard-project-row:hover,
+.dashboard-admin-row:hover {
+  background: var(--dc-hover, #eee8da) !important;
+}
+
+html[data-dc-theme="dark"] .dashboard-welcome h3,
+html[data-dc-theme="dark"] .dashboard-card-header h4,
+html[data-dc-theme="dark"] .dashboard-project-main strong,
+html[data-dc-theme="dark"] .dashboard-admin-main strong,
+html[data-dc-theme="dark"] .dashboard-metric-card strong {
+  color: var(--dc-text) !important;
+}

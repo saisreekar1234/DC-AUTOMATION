@@ -1,0 +1,152 @@
+/* ============================================================
+   DOCUMENT CONTROL — WARM ENTERPRISE THEME
+   Aconex-inspired light sand / ivory workspace
+   ============================================================ */
+
+:root {
+  --bg-main: #f3f0e5;
+  --bg-panel: #fbfaf4;
+  --bg-panel-soft: #f7f4e9;
+  --bg-input: #fffdf7;
+  --border: #ddd8c9;
+  --border-light: #e8e3d6;
+  --primary-light: #eef3ff;
+}
+
+html, body, #root,
+.app, .app-shell, .main-content {
+  background: var(--bg-main) !important;
+}
+
+.topbar {
+  background: rgba(251, 250, 244, 0.96) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+/* Main workspace surfaces */
+.content,
+.projects-page,
+.documents-page,
+.dashboard-content {
+  background: transparent !important;
+}
+
+.projects-panel,
+.project-details-panel,
+.project-metric,
+.dashboard-card,
+.dashboard-metric-card,
+.dashboard-welcome,
+.documents-panel,
+.document-metric,
+.users-panel,
+.users-card,
+.users-table-container,
+.settings-panel,
+.settings-card {
+  background: var(--bg-panel) !important;
+  border-color: var(--border) !important;
+}
+
+.projects-toolbar,
+.section-heading,
+.dashboard-card-header,
+.documents-toolbar,
+.users-toolbar,
+.settings-toolbar {
+  background: var(--bg-panel) !important;
+  border-color: var(--border-light) !important;
+}
+
+.project-search,
+.document-search,
+.project-filters,
+.document-filters,
+.users-filters,
+input,
+select,
+textarea {
+  background-color: var(--bg-input);
+}
+
+.project-search,
+.document-search {
+  border-color: var(--border);
+}
+
+.project-search:focus-within,
+.document-search:focus-within {
+  border-color: #93b4e8;
+}
+
+.projects-table thead th,
+.documents-table thead th,
+.users-table thead th {
+  background: #f1eee3 !important;
+  border-color: var(--border) !important;
+}
+
+.projects-table tbody td,
+.documents-table tbody td,
+.users-table tbody td {
+  border-color: var(--border-light) !important;
+}
+
+.projects-table tbody tr:hover,
+.documents-table tbody tr:hover,
+.users-table tbody tr:hover,
+.dashboard-project-row:hover,
+.dashboard-admin-row:hover {
+  background: #f7f4e9 !important;
+}
+
+.modal-backdrop {
+  background: rgba(63, 57, 42, 0.42) !important;
+}
+
+.project-modal,
+.upload-modal,
+.modal,
+.users-modal {
+  background: var(--bg-panel) !important;
+  border-color: var(--border) !important;
+}
+
+.modal-header,
+.modal-body,
+.modal-footer {
+  border-color: var(--border-light) !important;
+}
+
+.modal-footer {
+  background: #f4f1e7 !important;
+}
+
+/* Dashboard-specific surfaces */
+.dashboard-welcome {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(37, 99, 235, 0.07), transparent 30%),
+    linear-gradient(135deg, #fbfaf4 0%, #f5f1e5 100%) !important;
+}
+
+.dashboard-metric-icon {
+  background: #eef3ff !important;
+}
+
+/* Keep the navigation dark for strong enterprise contrast. */
+.sidebar {
+  background: var(--bg-sidebar) !important;
+}
+
+/* Mobile menu remains readable against the warm workspace. */
+.mobile-menu-button {
+  background: var(--bg-panel) !important;
+  border-color: var(--border) !important;
+}
+
+/* Project page has its own colour variables; override them globally. */
+.projects-page {
+  --pc-bg: #f3f0e5 !important;
+  --pc-card: #fbfaf4 !important;
+  --pc-border: #ddd8c9 !important;
+}

@@ -1,0 +1,5 @@
+Your existing Documents.jsx already calls:
+GET /documents/:id/cover-page
+
+No API change is required for the Generate Cover Page button.
+The backend renderer now uses the saved project field mappings automatically.

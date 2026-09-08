@@ -27,6 +27,15 @@ export default function Projects() {
   const [search, setSearch] =
     useState("");
 
+  const [clientFilter, setClientFilter] =
+    useState("ALL");
+
+  const [statusFilter, setStatusFilter] =
+    useState("ALL");
+
+  const [celebrationProject, setCelebrationProject] =
+    useState(null);
+
   const [
     selectedProject,
     setSelectedProject,
@@ -105,6 +114,21 @@ export default function Projects() {
   // SEARCH
   // ==========================================================
 
+  const clientOptions =
+    useMemo(() => {
+      return Array.from(
+        new Set(
+          projects
+            .map((project) =>
+              String(project.client_name || "").trim()
+            )
+            .filter(Boolean)
+        )
+      ).sort((a, b) =>
+        a.localeCompare(b)
+      );
+    }, [projects]);
+
   const filteredProjects =
     useMemo(() => {
       const query =
@@ -112,17 +136,13 @@ export default function Projects() {
           .trim()
           .toLowerCase();
 
-      if (!query) {
-        return projects;
-      }
-
-      return projects.filter(
-        (project) => {
-          return [
+      return projects.filter((project) => {
+        const matchesSearch =
+          !query ||
+          [
             project.project_code,
             project.project_name,
             project.client_name,
-            project.description,
           ]
             .filter(Boolean)
             .some((value) =>
@@ -130,11 +150,32 @@ export default function Projects() {
                 .toLowerCase()
                 .includes(query)
             );
-        }
-      );
+
+        const isActive =
+          project.is_active === undefined
+            ? true
+            : Boolean(project.is_active);
+
+        const matchesStatus =
+          statusFilter === "ALL" ||
+          (statusFilter === "ACTIVE" && isActive) ||
+          (statusFilter === "INACTIVE" && !isActive);
+
+        const matchesClient =
+          clientFilter === "ALL" ||
+          String(project.client_name || "") === clientFilter;
+
+        return (
+          matchesSearch &&
+          matchesStatus &&
+          matchesClient
+        );
+      });
     }, [
       projects,
       search,
+      clientFilter,
+      statusFilter,
     ]);
 
   // ==========================================================
@@ -260,9 +301,7 @@ export default function Projects() {
       setShowCreateModal(false);
 
       if (createdProject) {
-        setSelectedProject(
-          createdProject
-        );
+        setCelebrationProject(createdProject);
       }
     } catch (err) {
       console.error(
@@ -319,8 +358,7 @@ export default function Projects() {
           </h2>
 
           <p className="page-description">
-            Create and manage projects,
-            documents and project workflows.
+            Keep your project workspace simple, organised and easy to access.
           </p>
         </div>
 
@@ -382,7 +420,7 @@ export default function Projects() {
       <div className="projects-summary">
 
         <ProjectMetric
-          icon="⌂"
+          icon="▦"
           label="Total Projects"
           value={
             projects.length
@@ -390,28 +428,10 @@ export default function Projects() {
         />
 
         <ProjectMetric
-          icon="✓"
-          label="Visible Projects"
-          value={
-            filteredProjects.length
-          }
-        />
-
-        <ProjectMetric
           icon="◎"
-          label="Clients"
+          label="Total Clients"
           value={
             clientCount
-          }
-        />
-
-        <ProjectMetric
-          icon="↗"
-          label="Latest Project"
-          value={
-            projects[0]
-              ?.project_code ||
-            "—"
           }
         />
 
@@ -440,31 +460,85 @@ export default function Projects() {
 
         </div>
 
-        <div className="project-search">
+        <div className="project-filter-bar">
 
-          <span>
-            ⌕
+          <div className="project-search">
+            <span className="project-search-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-4-4" />
+            </svg>
           </span>
 
-          <input
-            type="text"
-            placeholder="Search project code, name or client..."
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
-          />
+            <input
+              type="text"
+              placeholder="Search project code, name or client..."
+              value={search}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
+            />
 
-          {search && (
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <select
+            className="project-filter-select"
+            value={clientFilter}
+            onChange={(event) =>
+              setClientFilter(event.target.value)
+            }
+            aria-label="Filter by client"
+          >
+            <option value="ALL">All clients</option>
+            {clientOptions.map((client) => (
+              <option key={client} value={client}>
+                {client}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="project-filter-select"
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value)
+            }
+            aria-label="Filter by status"
+          >
+            <option value="ALL">All status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+
+          {(search || clientFilter !== "ALL" || statusFilter !== "ALL") && (
             <button
               type="button"
-              onClick={() =>
-                setSearch("")
-              }
+              className="project-reset-filters"
+              onClick={() => {
+                setSearch("");
+                setClientFilter("ALL");
+                setStatusFilter("ALL");
+              }}
             >
-              ×
+              Clear filters
             </button>
           )}
 
@@ -544,7 +618,7 @@ export default function Projects() {
                     </th>
 
                     <th>
-                      DESCRIPTION
+                      STATUS
                     </th>
 
                     <th>
@@ -603,11 +677,16 @@ export default function Projects() {
                         </td>
 
                         <td>
-                          <span className="project-description-cell">
-                            {
-                              project.description ||
-                              "No description"
+                          <span
+                            className={
+                              project.is_active === false
+                                ? "project-status-badge inactive"
+                                : "project-status-badge active"
                             }
+                          >
+                            {project.is_active === false
+                              ? "Inactive"
+                              : "Active"}
                           </span>
                         </td>
 
@@ -644,6 +723,55 @@ export default function Projects() {
           )}
 
       </section>
+
+      {celebrationProject && (
+        <div className="project-celebration-backdrop">
+          <div className="project-confetti" aria-hidden="true">
+            {Array.from({ length: 28 }).map((_, index) => (
+              <span key={index} />
+            ))}
+          </div>
+
+          <div className="project-celebration-card">
+            <div className="celebration-icon">✓</div>
+
+            <p className="eyebrow">PROJECT CREATED</p>
+
+            <h3>Project created successfully</h3>
+
+            <p>
+              <strong>
+                {celebrationProject.project_name || "New project"}
+              </strong>
+              {celebrationProject.project_code
+                ? ` · ${celebrationProject.project_code}`
+                : ""}
+            </p>
+
+            <div className="celebration-actions">
+              <button
+                type="button"
+                className="cancel-button"
+                onClick={() => setCelebrationProject(null)}
+              >
+                Done
+              </button>
+
+              <button
+                type="button"
+                className="confirm-upload-button"
+                onClick={() => {
+                  const project = celebrationProject;
+                  setCelebrationProject(null);
+                  setSelectedProject(project);
+                }}
+              >
+                Open Project →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreateModal && (
         <div
