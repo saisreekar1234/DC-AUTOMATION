@@ -5,18 +5,21 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const pool = require("./config/database");
+
 const projectRoutes = require("./routes/projectRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const revisionRoutes = require("./routes/revisionRoutes");
 const revisionRuleRoutes = require("./routes/revisionRuleRoutes");
+
 const customerTransmittalRoutes = require(
   "./routes/customerTransmittalRoutes"
 );
+
 const revisionVerificationRoutes =
   require("./routes/revisionVerificationRoutes");
 
 const customerResponseRoutes =
-  require("./routes/customerResponseRoutes");  
+  require("./routes/customerResponseRoutes");
 
 const signatureRoutes =
   require("./routes/signatureRoutes");
@@ -33,53 +36,93 @@ const authRoutes =
 const userRoutes =
   require("./routes/userRoutes");
 
+const profileRoutes =
+  require("./routes/profileRoutes");
+
 const projectMemberRoutes =
   require("./routes/projectMemberRoutes");
 
+// ============================================================
+// COVER PAGE
+// ============================================================
+
 const projectCoverPageTemplateRoutes =
   require("./routes/projectCoverPageTemplateRoutes");
-  
+
 const projectCoverPageConfigRoutes =
   require("./routes/projectCoverPageConfigRoutes");
 
-  
+// ============================================================
+// APP
+// ============================================================
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+// ============================================================
+// CORE ROUTES
+// ============================================================
+
 app.use("/api/projects", projectRoutes);
+
 app.use("/api/documents", documentRoutes);
+
 app.use("/api/revisions", revisionRoutes);
+
 app.use("/api/revision-rules", revisionRuleRoutes);
+
+// ============================================================
+// TRANSMITTALS
+// ============================================================
+
 app.use(
   "/api/customer-transmittals",
   customerTransmittalRoutes
 );
+
+// ============================================================
+// REVISION / WORKFLOW
+// ============================================================
+
 app.use(
   "/api/revision-verification",
   revisionVerificationRoutes
 );
+
 app.use(
   "/api/customer-responses",
   customerResponseRoutes
 );
+
 app.use(
   "/api/signatures",
   signatureRoutes
 );
+
 app.use(
   "/api/document-approval",
   documentApprovalRoutes
 );
+
 app.use(
   "/api/revision-workflow",
   revisionWorkflowRoutes
 );
+
+// ============================================================
+// AUTHENTICATION
+// ============================================================
+
 app.use(
   "/api/auth",
   authRoutes
 );
+
+// ============================================================
+// USERS / MEMBERS
+// ============================================================
 
 app.use(
   "/api/users",
@@ -92,6 +135,15 @@ app.use(
 );
 
 app.use(
+  "/api/profile",
+  profileRoutes
+);
+
+// ============================================================
+// COVER PAGE
+// ============================================================
+
+app.use(
   "/api/project-cover-page-templates",
   projectCoverPageTemplateRoutes
 );
@@ -101,14 +153,19 @@ app.use(
   projectCoverPageConfigRoutes
 );
 
-
-
+// ============================================================
+// ROOT
+// ============================================================
 
 app.get("/", (req, res) => {
   res.json({
     message: "Document Control System API is running",
   });
 });
+
+// ============================================================
+// DATABASE TEST
+// ============================================================
 
 app.get("/api/test-db", async (req, res) => {
   try {
@@ -126,6 +183,10 @@ app.get("/api/test-db", async (req, res) => {
     });
   }
 });
+
+// ============================================================
+// SERVER
+// ============================================================
 
 const PORT = process.env.PORT || 5000;
 

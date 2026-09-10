@@ -6,7 +6,7 @@ import {
 
 import api from "../services/api";
 
-export default function Documents({ projectId = null }) {
+export default function Documents() {
 
   // ==========================================================
   // DOCUMENT STATE
@@ -14,12 +14,6 @@ export default function Documents({ projectId = null }) {
 
   const [documents, setDocuments] =
     useState([]);
-
-  const [projects, setProjects] =
-    useState([]);
-
-  const [projectsLoading, setProjectsLoading] =
-    useState(false);
 
   const [
     selectedDocument,
@@ -67,30 +61,8 @@ export default function Documents({ projectId = null }) {
       setLoading(true);
       setError("");
 
-      // Global Documents page:
-      //   GET /documents
-      //
-      // Project Details page:
-      //   GET /documents?project_id=<actual project id>
-      //
-      // IMPORTANT:
-      // Never use a hard-coded project ID here.
-      const scopedProjectId =
-        projectId?.id ??
-        projectId ??
-        null;
-
       const response =
-        await api.get(
-          "/documents",
-          scopedProjectId !== null && scopedProjectId !== undefined
-            ? {
-                params: {
-                  project_id: scopedProjectId,
-                },
-              }
-            : undefined
-        );
+        await api.get("/documents");
 
       const payload =
         response.data;
@@ -207,107 +179,92 @@ export default function Documents({ projectId = null }) {
 
   useEffect(() => {
 
-    async function loadProjects() {
-      try {
-        setProjectsLoading(true);
-
-        const response = await api.get("/projects");
-        const payload = response.data;
-
-        const rows =
-          Array.isArray(payload)
-            ? payload
-            : payload?.projects ||
-              payload?.data ||
-              payload?.rows ||
-              [];
-
-        const normalized = rows
-          .map((project) => ({
-            id: project.id,
-            code: project.project_code || `Project ${project.id}`,
-            name: project.project_name || "",
-          }))
-          .filter((project) => project.id !== null && project.id !== undefined);
-
-        setProjects(normalized);
-      } catch (err) {
-        console.error("LOAD PROJECTS ERROR:", err);
-        setProjects([]);
-      } finally {
-        setProjectsLoading(false);
-      }
-    }
-
-    loadProjects();
     loadDocuments();
 
-  }, [projectId]);
+  }, []);
 
 
   // ==========================================================
-  // PROJECT-SCOPED MODE
+  // GLOBAL SEARCH
   // ==========================================================
-
-  const scopedProjectId =
-    projectId?.id ??
-    projectId ??
-    null;
-
-  const isProjectScoped =
-    scopedProjectId !== null &&
-    scopedProjectId !== undefined;
 
   useEffect(() => {
-    if (isProjectScoped) {
-      setProjectFilter(String(scopedProjectId));
-    } else {
-      setProjectFilter("ALL");
+
+    function handleGlobalSearch(event) {
+      const value = String(event.detail || "");
+      setSearch(value);
     }
-  }, [isProjectScoped, scopedProjectId]);
+
+    window.addEventListener("dc-global-search", handleGlobalSearch);
+
+    const pendingSearch = localStorage.getItem("dc_global_document_search");
+
+    if (pendingSearch) {
+      setSearch(pendingSearch);
+      localStorage.removeItem("dc_global_document_search");
+    }
+
+    return () => {
+      window.removeEventListener("dc-global-search", handleGlobalSearch);
+    };
+
+  }, []);
 
 
   // ==========================================================
-  // STATUS / STAGE FILTER OPTIONS
+  // PROJECTS FROM CURRENT DATA
   // ==========================================================
 
+  const projects = useMemo(() => {
 
-  const statuses = useMemo(() => {
-    const standardStatuses = [
-      "PENDING",
-      "SUBMITTED",
-      "UNDER_REVIEW",
-      "COMMENTED",
-      "APPROVED",
-      "REJECTED",
-      "COMPLETED",
-      "IN_PROGRESS",
-      "FAILED",
-    ];
-
-    const backendStatuses = documents
-      .map((document) => getDocumentStatus(document))
-      .filter(
-        (status) =>
-          status &&
-          status !== "UNKNOWN"
-      );
-
-    const backendStages = documents
-      .map((document) => getDocumentStage(document))
-      .filter(
-        (stage) =>
-          stage &&
-          stage !== "UNKNOWN"
-      );
+    const values =
+      documents
+        .map(
+          (item) =>
+            item.project_id
+        )
+        .filter(
+          (value) =>
+            value !== null &&
+            value !== undefined &&
+            value !== ""
+        );
 
     return [
-      ...new Set([
-        ...standardStatuses,
-        ...backendStatuses,
-        ...backendStages,
-      ]),
-    ];
+      ...new Set(values),
+    ].sort(
+      (a, b) =>
+        Number(a) -
+        Number(b)
+    );
+
+  }, [documents]);
+
+
+  // ==========================================================
+  // STATUSES FROM CURRENT DATA
+  // ==========================================================
+
+  const statuses = useMemo(() => {
+
+    const values =
+      documents
+        .map(
+          (item) =>
+            item.revision_status ||
+            item.status ||
+            item.current_status
+        )
+        .filter(Boolean)
+        .map((value) =>
+          String(value)
+            .toUpperCase()
+        );
+
+    return [
+      ...new Set(values),
+    ].sort();
+
   }, [documents]);
 
 
@@ -315,46 +272,85 @@ export default function Documents({ projectId = null }) {
   // FILTER DOCUMENTS
   // ==========================================================
 
-  const filteredDocuments = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const filteredDocuments =
+    useMemo(() => {
 
-    return documents.filter((document) => {
-      const searchableValues = [
-        document.document_number,
-        document.customer_document_number,
-        document.vendor_document_number,
-        document.title,
-        document.description,
-        document.project_code,
-        document.project_name,
-        document.line_number,
-      ]
-        .filter((value) => value !== null && value !== undefined)
-        .map((value) => String(value).toLowerCase());
+      const query =
+        search
+          .trim()
+          .toLowerCase();
 
-      const matchesSearch =
-        !query || searchableValues.some((value) => value.includes(query));
+      return documents.filter(
+        (document) => {
 
-      const matchesProject =
-        projectFilter === "ALL" ||
-        String(document.project_id) === String(projectFilter);
+          const documentNumber =
+            String(
+              document.document_number ||
+              ""
+            ).toLowerCase();
 
-      const status = getDocumentStatus(document);
-      const stage = getDocumentStage(document);
+          const customerDocument =
+            String(
+              document.customer_document_number ||
+              ""
+            ).toLowerCase();
 
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        status === statusFilter ||
-        stage === statusFilter;
+          const title =
+            String(
+              document.title ||
+              ""
+            ).toLowerCase();
 
-      return matchesSearch && matchesProject && matchesStatus;
-    });
-  }, [
-    documents,
-    search,
-    projectFilter,
-    statusFilter,
-  ]);
+          const matchesSearch =
+            !query ||
+            documentNumber.includes(
+              query
+            ) ||
+            customerDocument.includes(
+              query
+            ) ||
+            title.includes(
+              query
+            );
+
+          const matchesProject =
+            projectFilter ===
+              "ALL" ||
+            String(
+              document.project_id
+            ) ===
+              String(
+                projectFilter
+              );
+
+          const status =
+            String(
+              document.revision_status ||
+              document.status ||
+              document.current_status ||
+              ""
+            ).toUpperCase();
+
+          const matchesStatus =
+            statusFilter ===
+              "ALL" ||
+            status ===
+              statusFilter;
+
+          return (
+            matchesSearch &&
+            matchesProject &&
+            matchesStatus
+          );
+        }
+      );
+
+    }, [
+      documents,
+      search,
+      projectFilter,
+      statusFilter,
+    ]);
 
 
   // ==========================================================
@@ -364,13 +360,7 @@ export default function Documents({ projectId = null }) {
   function resetFilters() {
 
     setSearch("");
-
-    setProjectFilter(
-      isProjectScoped
-        ? String(scopedProjectId)
-        : "ALL"
-    );
-
+    setProjectFilter("ALL");
     setStatusFilter("ALL");
 
   }
@@ -462,8 +452,6 @@ export default function Documents({ projectId = null }) {
           value={
             documents.filter(
               (item) =>
-                item.current_revision_record_id ||
-                item.current_revision_code ||
                 item.current_revision_id ||
                 item.revision_code
             ).length
@@ -563,34 +551,35 @@ export default function Documents({ projectId = null }) {
 
           {/* PROJECT */}
 
-          {!isProjectScoped && (
-            <select
-              value={
-                projectFilter
-              }
-              onChange={(event) =>
-                setProjectFilter(
-                  event.target.value
-                )
-              }
-            >
+          <select
+            value={
+              projectFilter
+            }
+            onChange={(event) =>
+              setProjectFilter(
+                event.target.value
+              )
+            }
+          >
 
-              <option value="ALL">
-                All Projects
-              </option>
+            <option value="ALL">
+              All Projects
+            </option>
 
-              {projects.map((project) => (
+            {projects.map(
+              (project) => (
+
                 <option
-                  key={project.id}
-                  value={project.id}
+                  key={project}
+                  value={project}
                 >
-                  {project.code}
-                  {project.name ? ` — ${project.name}` : ""}
+                  Project {project}
                 </option>
-              ))}
 
-            </select>
-          )}
+              )
+            )}
+
+          </select>
 
 
           {/* STATUS */}
@@ -607,7 +596,7 @@ export default function Documents({ projectId = null }) {
           >
 
             <option value="ALL">
-              All Statuses / Stages
+              All Statuses
             </option>
 
             {statuses.map(
@@ -682,7 +671,7 @@ export default function Documents({ projectId = null }) {
             <span>
               {documents.length ===
               0
-                ? "No documents are available in your accessible projects."
+                ? "No documents are available for this project."
                 : "Try changing your search or filters."
               }
             </span>
@@ -828,13 +817,15 @@ function DocumentRow({
   onView,
 }) {
 
-  const status = getDocumentStatus(document);
+  const status =
+    document.revision_status ||
+    document.status ||
+    document.current_status ||
+    "UNKNOWN";
 
   const stage =
-    document.current_revision_stage ??
-    document.current_revision_stage_value ??
-    document.revision_stage ??
-    document.stage ??
+    document.revision_stage ||
+    document.stage ||
     "—";
 
   return (
@@ -897,9 +888,7 @@ function DocumentRow({
 
         <span className="project-badge">
 
-          {document.project_code ||
-            document.project_name ||
-            document.project_id ||
+          {document.project_id ??
             "—"}
 
         </span>
@@ -913,8 +902,7 @@ function DocumentRow({
 
         <span className="revision-badge">
 
-          {document.current_revision_code ||
-            document.revision_code ||
+          {document.revision_code ||
             document.revision ||
             "—"}
 
@@ -1016,11 +1004,6 @@ function DocumentDetails({
     loadingCurrentRevision,
     setLoadingCurrentRevision,
   ] = useState(true);
-
-  const [
-    generatingCoverPage,
-    setGeneratingCoverPage,
-  ] = useState(false);
 
 
   // ==========================================================
@@ -1169,73 +1152,6 @@ function DocumentDetails({
 
 
   // ==========================================================
-  // GENERATE COVER PAGE PDF
-  // ==========================================================
-
-  async function generateCoverPage() {
-    if (!document?.id || generatingCoverPage) {
-      return;
-    }
-
-    const pdfWindow = window.open("", "_blank");
-
-    try {
-      setGeneratingCoverPage(true);
-
-      const response = await api.get(
-        `/documents/${document.id}/cover-page`,
-        {
-          responseType: "blob",
-        }
-      );
-
-      const blob = new Blob([response.data], {
-        type: "application/pdf",
-      });
-      const url = URL.createObjectURL(blob);
-
-      if (pdfWindow) {
-        pdfWindow.location.href = url;
-      } else {
-        window.open(url, "_blank");
-      }
-
-      window.setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 60000);
-    } catch (error) {
-      console.error(
-        "GENERATE COVER PAGE ERROR:",
-        error
-      );
-
-      if (pdfWindow) {
-        pdfWindow.close();
-      }
-
-      let message =
-        error.response?.data?.message ||
-        error.message ||
-        "Unable to generate the cover page.";
-
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const payload = JSON.parse(text);
-          message = payload.message || message;
-        } catch (_) {
-          // Keep the original error message.
-        }
-      }
-
-      window.alert(message);
-    } finally {
-      setGeneratingCoverPage(false);
-    }
-  }
-
-
-  // ==========================================================
   // CURRENT REVISION CODE
   // ==========================================================
 
@@ -1302,26 +1218,12 @@ function DocumentDetails({
 
         </div>
 
-        <div className="document-details-header-actions">
-          <button
-            type="button"
-            className="cover-page-button"
-            onClick={generateCoverPage}
-            disabled={generatingCoverPage}
-            title="Generate the controlled document cover page as a PDF"
-          >
-            {generatingCoverPage
-              ? "Generating PDF..."
-              : "Generate Cover Page PDF"}
-          </button>
-
-          <button
-            className="close-button"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
+        <button
+          className="close-button"
+          onClick={onClose}
+        >
+          Close
+        </button>
 
       </div>
 
@@ -1708,40 +1610,6 @@ function RevisionRow({
 
 
 // ============================================================
-// DOCUMENT STATUS
-// ============================================================
-
-function getDocumentStatus(document) {
-  return String(
-    document?.current_revision_status ??
-      document?.revision_status ??
-      document?.current_status ??
-      document?.status ??
-      "UNKNOWN"
-  )
-    .trim()
-    .toUpperCase();
-}
-
-
-// ============================================================
-// DOCUMENT STAGE
-// ============================================================
-
-function getDocumentStage(document) {
-  return String(
-    document?.current_revision_stage ??
-      document?.current_revision_stage_value ??
-      document?.revision_stage ??
-      document?.stage ??
-      "UNKNOWN"
-  )
-    .trim()
-    .toUpperCase();
-}
-
-
-// ============================================================
 // DOCUMENT METRIC
 // ============================================================
 
@@ -1841,19 +1709,11 @@ function DocumentStatus({
     normalized ===
       "REVIEW" ||
     normalized ===
-      "UNDER_REVIEW" ||
-    normalized ===
-      "UNDER REVIEW" ||
-    normalized ===
       "IN_PROGRESS" ||
     normalized ===
       "IN PROGRESS" ||
     normalized ===
-      "SUBMITTED" ||
-    normalized ===
-      "PENDING" ||
-    normalized ===
-      "COMMENTED"
+      "PENDING"
   ) {
 
     className =

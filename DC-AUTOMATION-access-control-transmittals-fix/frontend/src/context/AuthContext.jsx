@@ -131,8 +131,7 @@ export function AuthProvider({ children }) {
   }
 
   function updateUser(updatedUser) {
-    setUser(updatedUser || null);
-    if (!updatedUser) return;
+    setUser(updatedUser);
     const storage = localStorage.getItem("dc_token") ? localStorage : sessionStorage;
     storage.setItem("dc_user", JSON.stringify(updatedUser));
   }

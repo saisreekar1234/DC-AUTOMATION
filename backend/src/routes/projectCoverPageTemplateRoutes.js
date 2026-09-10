@@ -1,11 +1,8 @@
 const express = require("express");
 const multer = require("multer");
-
 const authMiddleware = require("../middleware/authMiddleware");
-
 const {
   getTemplate,
-  getTemplateFile,
   uploadTemplate,
 } = require("../controllers/projectCoverPageTemplateController");
 
@@ -20,16 +17,9 @@ const upload = multer({
     if (file.mimetype !== "application/pdf") {
       return cb(new Error("Only PDF files are allowed"));
     }
-
     cb(null, true);
   },
 });
-
-router.get(
-  "/:projectId/file",
-  authMiddleware,
-  getTemplateFile
-);
 
 router.get(
   "/:projectId",

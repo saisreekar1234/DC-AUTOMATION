@@ -1,439 +1,309 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 
-import sulzerLogo from "../assets/sulzer-logo.jpg";
-import { useAuth } from "../context/AuthContext";
+const languages = {
+  en: {
+    language: "English",
+    welcome: "Welcome back",
+    subtitle: "Sign in to access your Document Control workspace.",
+    email: "Email address",
+    password: "Password",
+    emailPlaceholder: "Enter your email",
+    passwordPlaceholder: "Enter your password",
+    remember: "Remember me",
+    forgot: "Forgot password?",
+    signIn: "Sign in",
+    signingIn: "Signing in...",
+    secure: "Secure enterprise access",
+    secureText:
+      "Your project information and controlled documents are protected.",
+    error: "Unable to sign in. Please check your credentials.",
+    tagline: "Control information. Control projects.",
+  },
 
+  te: {
+    language: "తెలుగు",
+    welcome: "స్వాగతం",
+    subtitle: "మీ డాక్యుమెంట్ కంట్రోల్ వర్క్‌స్పేస్‌లోకి సైన్ ఇన్ చేయండి.",
+    email: "ఇమెయిల్ చిరునామా",
+    password: "పాస్‌వర్డ్",
+    emailPlaceholder: "మీ ఇమెయిల్ నమోదు చేయండి",
+    passwordPlaceholder: "మీ పాస్‌వర్డ్ నమోదు చేయండి",
+    remember: "నన్ను గుర్తుంచుకోండి",
+    forgot: "పాస్‌వర్డ్ మర్చిపోయారా?",
+    signIn: "సైన్ ఇన్",
+    signingIn: "సైన్ ఇన్ అవుతోంది...",
+    secure: "సురక్షిత ఎంటర్‌ప్రైజ్ యాక్సెస్",
+    secureText:
+      "మీ ప్రాజెక్ట్ సమాచారం మరియు నియంత్రిత డాక్యుమెంట్లు రక్షించబడతాయి.",
+    error: "సైన్ ఇన్ చేయలేకపోయాము. మీ వివరాలను తనిఖీ చేయండి.",
+    tagline: "సమాచారాన్ని నియంత్రించండి. ప్రాజెక్టులను నియంత్రించండి.",
+  },
 
-// ============================================================
-// LOGIN COMPONENT
-// ============================================================
+  hi: {
+    language: "हिन्दी",
+    welcome: "वापसी पर स्वागत है",
+    subtitle: "अपने डॉक्यूमेंट कंट्रोल वर्कस्पेस में साइन इन करें।",
+    email: "ईमेल पता",
+    password: "पासवर्ड",
+    emailPlaceholder: "अपना ईमेल दर्ज करें",
+    passwordPlaceholder: "अपना पासवर्ड दर्ज करें",
+    remember: "मुझे याद रखें",
+    forgot: "पासवर्ड भूल गए?",
+    signIn: "साइन इन",
+    signingIn: "साइन इन हो रहा है...",
+    secure: "सुरक्षित एंटरप्राइज़ एक्सेस",
+    secureText:
+      "आपकी प्रोजेक्ट जानकारी और नियंत्रित डॉक्यूमेंट सुरक्षित हैं।",
+    error: "साइन इन नहीं हो सका। कृपया अपनी जानकारी जाँचें।",
+    tagline: "जानकारी नियंत्रित करें। प्रोजेक्ट नियंत्रित करें।",
+  },
 
-function Login() {
+  ar: {
+    language: "العربية",
+    welcome: "مرحباً بعودتك",
+    subtitle: "سجّل الدخول للوصول إلى مساحة إدارة المستندات.",
+    email: "عنوان البريد الإلكتروني",
+    password: "كلمة المرور",
+    emailPlaceholder: "أدخل بريدك الإلكتروني",
+    passwordPlaceholder: "أدخل كلمة المرور",
+    remember: "تذكرني",
+    forgot: "هل نسيت كلمة المرور؟",
+    signIn: "تسجيل الدخول",
+    signingIn: "جارٍ تسجيل الدخول...",
+    secure: "وصول مؤسسي آمن",
+    secureText:
+      "معلومات المشروع والمستندات الخاضعة للرقابة محمية.",
+    error: "تعذر تسجيل الدخول. يرجى التحقق من بياناتك.",
+    tagline: "تحكم في المعلومات. تحكم في المشاريع.",
+  },
+};
 
+export default function Login() {
   const { login } = useAuth();
 
-  const [
-    email,
-    setEmail,
-  ] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  const [language, setLanguage] = useState(
+    localStorage.getItem("dc_language") || "en",
+  );
 
-  const [
-    password,
-    setPassword,
-  ] = useState("");
+  const t = languages[language] || languages.en;
 
+  function changeLanguage(value) {
+    setLanguage(value);
+    localStorage.setItem("dc_language", value);
 
-  const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
+    document.documentElement.dir =
+      value === "ar" ? "rtl" : "ltr";
 
-
-  const [
-    rememberMe,
-    setRememberMe,
-  ] = useState(true);
-
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-
-  // ==========================================================
-  // LOGIN
-  // ==========================================================
-
-  async function handleSubmit(event) {
-
-    event.preventDefault();
-
-    setError("");
-
-
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
-
-    if (!email.trim()) {
-
-      setError(
-        "Please enter your email address."
-      );
-
-      return;
-
-    }
-
-
-    if (!password) {
-
-      setError(
-        "Please enter your password."
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      setLoading(true);
-
-
-      // ------------------------------------------------------
-      // AUTHENTICATE THROUGH AUTH CONTEXT
-      // ------------------------------------------------------
-
-      const result =
-        await login(
-          email.trim(),
-          password,
-          rememberMe,
-        );
-
-      if (!result?.user) {
-        throw new Error(
-          "Login succeeded but no user data was returned."
-        );
-      }
-
-      // AuthContext updates the application state.
-      // App.jsx will automatically render the application.
-
-    }
-
-    catch (error) {
-
-      console.error(
-        "LOGIN ERROR:",
-        error
-      );
-
-
-      setError(
-        error.response?.data?.message ||
-        error.message ||
-        "Login failed. Please check your credentials."
-      );
-
-    }
-
-    finally {
-
-      setLoading(false);
-
-    }
-
+    document.documentElement.lang = value;
   }
 
+  async function handleSubmit(event) {
+    event.preventDefault();
 
-  // ==========================================================
-  // RENDER
-  // ==========================================================
+    if (!email.trim() || !password) {
+      setError(t.error);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      await login(
+        email.trim(),
+        password,
+        remember,
+      );
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          t.error,
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
+    <main className="dc-login-shell">
+      <section className="dc-login-visual">
+        <div className="dc-grid" /><div className="dc-glow dc-glow-a" /><div className="dc-glow dc-glow-b" />
 
-    <main className="login-page">
+        <div className="login-blueprint blueprint-one">
+          <div />
+          <div />
+          <div />
+          <div />
+        </div>
 
+        <div className="dc-orbit orbit-one"><span /></div>
 
-      {/* ====================================================
-          BACKGROUND IMAGE
-          ==================================================== */}
+        <div className="login-blueprint blueprint-two">
+          <div />
+          <div />
+          <div />
+        </div>
 
-      <div className="login-background" />
+        <div className="dc-visual-content">
+          <div className="login-brand">
+            <div className="login-brand-logo">
+              DC
+            </div>
 
-
-      {/* ====================================================
-          DARK OVERLAY
-          ==================================================== */}
-
-      <div className="login-background-overlay" />
-
-
-      {/* ====================================================
-          MAIN CONTENT
-          ==================================================== */}
-
-      <div className="login-layout">
-
-
-        {/* ==================================================
-            LEFT SIDE
-            ================================================== */}
-
-        <section className="login-information">
-
-
-          {/* COMPANY LOGO */}
-
-          <div className="company-logo-wrapper">
-
-            <img
-              src={sulzerLogo}
-              alt="Sulzer"
-              className="company-logo"
-            />
-
+            <div>
+              <strong>DOCUMENT CONTROL</strong>
+              <span>AUTOMATION PLATFORM</span>
+            </div>
           </div>
 
-
-          {/* BRAND */}
-
-          <div className="login-brand-content">
-
-            <p className="login-brand-small">
-              DOCUMENT CONTROL
-            </p>
-
+          <div className="login-hero-copy">
+            <div className="login-kicker">
+              ENGINEERING · PROJECTS · CONTROL
+            </div>
 
             <h1>
-              Automation System
+              Control information.
+              <br />
+              <span>Control projects.</span>
             </h1>
 
-
-            <div className="login-brand-line" />
-
-
-            <p className="login-brand-description">
-              Smart document control for
-              smarter projects.
+            <p>
+              A central workspace for documents,
+              revisions, transmittals, approvals
+              and controlled project information.
             </p>
-
           </div>
-
-
-          {/* FEATURES */}
 
           <div className="login-features">
-
-
-            <div className="login-feature">
-
-              <span className="feature-icon">
-                ✓
-              </span>
-
-              <span>
-                Secure Access
-              </span>
-
+            <div>
+              <span>01</span>
+              <strong>Document Register</strong>
+              <small>
+                Centralised document control
+              </small>
             </div>
 
-
-            <div className="login-feature">
-
-              <span className="feature-icon">
-                ✓
-              </span>
-
-              <span>
-                Centralized Documents
-              </span>
-
+            <div>
+              <span>02</span>
+              <strong>Revision Control</strong>
+              <small>
+                Complete revision history
+              </small>
             </div>
 
-
-            <div className="login-feature">
-
-              <span className="feature-icon">
-                ✓
-              </span>
-
-              <span>
-                Real-time Tracking
-              </span>
-
+            <div>
+              <span>03</span>
+              <strong>Workflow Automation</strong>
+              <small>
+                Reviews, approvals and signatures
+              </small>
             </div>
 
-
-            <div className="login-feature">
-
-              <span className="feature-icon">
-                ✓
-              </span>
-
-              <span>
-                Efficient Approvals
-              </span>
-
+            <div>
+              <span>04</span>
+              <strong>Transmittal Intelligence</strong>
+              <small>
+                Automated customer response processing
+              </small>
             </div>
-
-
           </div>
 
-
-          {/* LEFT FOOTER */}
-
-          <div className="login-information-footer">
-
-            <span>
-              Secure
-            </span>
-
-            <span className="footer-dot">
-              •
-            </span>
-
-            <span>
-              Reliable
-            </span>
-
-            <span className="footer-dot">
-              •
-            </span>
-
-            <span>
-              Efficient
-            </span>
-
+          <div className="login-visual-footer">
+            <span>DOCUMENT CONTROL AUTOMATION</span>
+            <span>SECURE · CONTROLLED · TRACEABLE</span>
           </div>
+        </div>
+      </section>
 
+      <section className="dc-login-form-side">
+        <div className="login-top-controls">
+          <div className="login-language">
+            <span>🌐</span>
 
-        </section>
+            <select
+              value={language}
+              onChange={(event) =>
+                changeLanguage(event.target.value)
+              }
+              aria-label="Language"
+            >
+              <option value="en">English</option>
+              <option value="te">తెలుగు</option>
+              <option value="hi">हिन्दी</option>
+              <option value="ar">العربية</option>
+            </select>
+          </div>
+        </div>
 
-
-        {/* ==================================================
-            LOGIN CARD
-            ================================================== */}
-
-        <section className="login-card">
-
-
-          {/* LOGO */}
-
+        <div className="dc-login-card">
           <div className="login-card-logo">
-
-            <img
-              src={sulzerLogo}
-              alt="Sulzer"
-            />
-
+            <span>DC</span>
           </div>
-
-
-          {/* HEADING */}
 
           <div className="login-heading">
-
-            <h2>
-              Welcome Back!
-            </h2>
-
-            <p>
-              Sign in to continue to your account
-            </p>
-
-          </div>
-
-
-          {/* SECURITY DIVIDER */}
-
-          <div className="login-divider">
-
-            <span />
-
-            <div className="security-icon">
-              ✓
+            <div className="login-small-label">
+              DOCUMENT CONTROL
             </div>
 
-            <span />
+            <h2>{t.welcome}</h2>
 
+            <p>{t.subtitle}</p>
           </div>
-
-
-          {/* ERROR */}
 
           {error && (
-
             <div className="login-error">
-
-              <span className="error-icon">
-                !
-              </span>
-
-              <span>
-                {error}
-              </span>
-
+              <span>!</span>
+              <div>{error}</div>
             </div>
-
           )}
 
-
-          {/* FORM */}
-
-          <form
-            className="login-form"
-            onSubmit={
-              handleSubmit
-            }
-          >
-
-
-            {/* EMAIL */}
-
+          <form onSubmit={handleSubmit}>
             <div className="login-field">
-
-              <label htmlFor="email">
-                Email Address
+              <label htmlFor="login-email">
+                {t.email}
               </label>
 
-
-              <div className="input-wrapper">
-
+              <div className="login-input-wrapper">
                 <span className="input-icon">
                   @
                 </span>
 
-
                 <input
-                  id="email"
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(event) =>
-                    setEmail(
-                      event.target.value
-                    )
+                    setEmail(event.target.value)
                   }
-                  placeholder="Enter your email"
+                  placeholder={t.emailPlaceholder}
                   autoComplete="email"
                   disabled={loading}
                 />
-
               </div>
-
             </div>
 
-
-            {/* PASSWORD */}
-
             <div className="login-field">
-
-              <label htmlFor="password">
-                Password
+              <label htmlFor="login-password">
+                {t.password}
               </label>
 
-
-              <div className="input-wrapper">
-
+              <div className="login-input-wrapper">
                 <span className="input-icon">
-                  🔒
+                  •
                 </span>
 
-
                 <input
-                  id="password"
+                  id="login-password"
                   type={
                     showPassword
                       ? "text"
@@ -441,189 +311,87 @@ function Login() {
                   }
                   value={password}
                   onChange={(event) =>
-                    setPassword(
-                      event.target.value
-                    )
+                    setPassword(event.target.value)
                   }
-                  placeholder="Enter your password"
+                  placeholder={
+                    t.passwordPlaceholder
+                  }
                   autoComplete="current-password"
                   disabled={loading}
                 />
-
 
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() =>
                     setShowPassword(
-                      current =>
-                        !current
+                      (value) => !value,
                     )
                   }
-                  aria-label={
-                    showPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
-                  disabled={loading}
+                  tabIndex={-1}
                 >
-
-                  {showPassword
-                    ? "◉"
-                    : "◌"
-                  }
-
+                  {showPassword ? "Hide" : "Show"}
                 </button>
-
               </div>
-
             </div>
 
-
-            {/* OPTIONS */}
-
             <div className="login-options">
-
-
-              <label className="remember-me">
-
+              <label className="remember-option">
                 <input
                   type="checkbox"
-                  checked={rememberMe}
+                  checked={remember}
                   onChange={(event) =>
-                    setRememberMe(
-                      event.target.checked
+                    setRemember(
+                      event.target.checked,
                     )
                   }
-                  disabled={loading}
                 />
 
-                <span>
-                  Remember me
-                </span>
-
+                <span>{t.remember}</span>
               </label>
-
 
               <button
                 type="button"
-                className="forgot-password"
-                onClick={() => {
-
-                  setError(
-                    "Please contact your administrator to reset your password."
-                  );
-
-                }}
+                className="forgot-button"
               >
-
-                Forgot password?
-
+                {t.forgot}
               </button>
-
-
             </div>
-
-
-            {/* SIGN IN */}
 
             <button
-              type="submit"
               className="login-submit"
+              type="submit"
               disabled={loading}
             >
-
-              {loading ? (
-
-                <>
-                  <span className="login-spinner" />
-
-                  Signing In...
-                </>
-
-              ) : (
-
-                <>
-                  <span className="login-submit-icon">
-                    →
-                  </span>
-
-                  Sign In
-                </>
-
-              )}
-
-            </button>
-
-
-          </form>
-
-
-          {/* SECURITY MESSAGE */}
-
-          <div className="secure-login">
-
-            <span className="secure-icon">
-              ✓
-            </span>
-
-
-            <div>
-
-              <strong>
-                Secure Login
-              </strong>
-
               <span>
-                Your connection is protected.
+                {loading ? t.signingIn : t.signIn}
               </span>
 
+              {!loading && <span>→</span>}
+            </button>
+          </form>
+
+          <div className="login-security">
+            <div className="security-icon">
+              ✓
             </div>
 
+            <div>
+              <strong>{t.secure}</strong>
+              <span>{t.secureText}</span>
+            </div>
           </div>
+        </div>
 
+        <div className="dc-login-bottom">
+          <span>
+            © {new Date().getFullYear()} Document
+            Control Automation
+          </span>
 
-          {/* CARD FOOTER */}
-
-          <div className="login-card-footer">
-
-            <span>
-              Document Control
-            </span>
-
-            <span>
-              •
-            </span>
-
-            <span>
-              Automation System
-            </span>
-
-          </div>
-
-
-        </section>
-
-
-      </div>
-
-
-      {/* ====================================================
-          COPYRIGHT
-          ==================================================== */}
-
-      <div className="login-copyright">
-
-        © 2026 Document Control Automation System
-
-      </div>
-
-
+          <span>{t.tagline}</span>
+        </div>
+      </section>
     </main>
-
   );
-
 }
-
-
-export default Login;
