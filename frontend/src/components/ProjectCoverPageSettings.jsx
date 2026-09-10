@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import api from "../api";
 import "./project-cover-page.css";
 
 export default function ProjectCoverPageSettings({ project }) {

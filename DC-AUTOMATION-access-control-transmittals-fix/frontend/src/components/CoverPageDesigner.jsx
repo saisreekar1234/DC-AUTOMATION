@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import api from "../api";
 import "./cover-page-designer.css";
 
 const SOURCES = [

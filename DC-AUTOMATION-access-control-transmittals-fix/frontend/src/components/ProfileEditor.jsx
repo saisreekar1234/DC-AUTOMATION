@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import api from "../services/api";
+import api from "../api";
 import "./profile-editor.css";
 
 export default function ProfileEditor({ onClose }) {

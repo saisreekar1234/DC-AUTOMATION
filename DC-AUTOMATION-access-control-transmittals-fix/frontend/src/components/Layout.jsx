@@ -1,20 +1,20 @@
-import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
-import "./enterprise-shell.css";
+  import { useState } from "react";
+  import { useAuth } from "../context/AuthContext";
+  import api from "../api";
+  import "./enterprise-shell.css";
 
-function Icon({ name, size = 18 }) {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: "1.8",
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    "aria-hidden": true,
-  };
+  function Icon({ name, size = 18 }) {
+    const common = {
+      width: size,
+      height: size,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: "1.8",
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      "aria-hidden": true,
+    };
 
   const icons = {
     projects: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></>,
