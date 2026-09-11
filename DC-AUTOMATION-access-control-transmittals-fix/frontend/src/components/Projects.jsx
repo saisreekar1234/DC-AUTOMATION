@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import ProjectCoverPageSettings from "./ProjectCoverPageSettings";
+import ProjectTransmittals from "./ProjectTransmittals";
+import DocumentExcelImportModal from "./DocumentExcelImportModal";
+import "./technical-department.css";
 import "./project.css";
 
 export default function Projects() {
@@ -113,6 +116,7 @@ function ProjectWorkspace({project,onBack}){
   const [error,setError]=useState("");
   const [search,setSearch]=useState("");
   const [selectedDoc,setSelectedDoc]=useState(null);
+  const [showExcelImport,setShowExcelImport]=useState(false);
 
   async function loadDocs(){
     try{setLoading(true);setError("");const r=await api.get("/documents",{params:{project_id:project.id}});const d=r.data;setDocs(Array.isArray(d)?d:d?.documents||d?.data||d?.rows||[])}
@@ -125,21 +129,102 @@ function ProjectWorkspace({project,onBack}){
     <div className="workspace-head">
       <div><button className="back-btn" onClick={onBack}>← Projects</button><div className="workspace-kicker">PROJECT WORKSPACE</div><div className="workspace-title"><span className="workspace-avatar">{String(project.project_code||project.project_name||"P").slice(0,2).toUpperCase()}</span><div><h1>{project.project_name||"Project"}</h1><p>{project.project_code||`PRJ-${project.id}`} <i/> {project.client_name||"No client"}</p></div></div></div>
     </div>
-    <nav className="workspace-tabs"><button className={tab==="documents"?"active":""} onClick={()=>setTab("documents")}>Documents <b>{docs.length}</b></button><button className={tab==="cover"?"active":""} onClick={()=>setTab("cover")}>Cover Page</button><button className={tab==="overview"?"active":""} onClick={()=>setTab("overview")}>Project Info</button></nav>
+    <nav className="workspace-tabs">
+      <button className={tab==="documents"?"active":""} onClick={()=>setTab("documents")}>Documents <b>{docs.length}</b></button>
+      <button className={tab==="cover"?"active":""} onClick={()=>setTab("cover")}>Cover Page</button>
+      <button className={tab==="technical"?"active":""} onClick={()=>setTab("technical")}>Technical Department</button>
+      <button className={tab==="transmittals"?"active":""} onClick={()=>setTab("transmittals")}>Transmittals</button>
+      <button className={tab==="overview"?"active":""} onClick={()=>setTab("overview")}>Project Info</button>
+    </nav>
     {error&&<div className="project-error">{error}<button onClick={()=>setError("")}>×</button></div>}
     {tab==="documents"&&<div className="workspace-panel">
-      <div className="workspace-panel-head"><div><span>DOCUMENT REGISTER</span><h2>Controlled documents</h2><p>Documents belonging only to <b>{project.project_code||project.project_name}</b>.</p></div><button onClick={loadDocs} disabled={loading}>↻ Refresh</button></div>
+      <div className="workspace-panel-head">
+        <div>
+          <span>DOCUMENT REGISTER</span>
+          <h2>Controlled documents</h2>
+          <p>Documents belonging only to <b>{project.project_code||project.project_name}</b>.</p>
+        </div>
+        <div className="workspace-panel-actions">
+          <button className="primary-btn" type="button" onClick={()=>setShowExcelImport(true)}>
+            ＋ Import MDR / Excel
+          </button>
+          <button className="ghost-btn" type="button" onClick={loadDocs} disabled={loading}>
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
       <label className="doc-search">⌕<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search document number, title or customer number..."/></label>
       {loading?<div className="project-empty"><div className="loader"/><strong>Loading documents</strong></div>:filtered.length===0?<div className="project-empty"><strong>No documents in this project</strong><span>Documents assigned to this project will appear here.</span></div>:
       <div className="doc-table-wrap"><table className="doc-table"><thead><tr><th>DOCUMENT NUMBER</th><th>TITLE</th><th>CUSTOMER DOCUMENT</th><th>REVISION</th><th>STAGE</th><th>STATUS</th><th></th></tr></thead><tbody>{filtered.map(d=><tr key={d.id}><td><button onClick={()=>setSelectedDoc(d)} className="doc-number">{d.document_number||"—"}</button></td><td><strong>{d.title||"Untitled"}</strong></td><td>{d.customer_document_number||"—"}</td><td><b className="rev-badge">{d.current_revision_code||d.revision_code||"—"}</b></td><td>{d.current_revision_stage||d.revision_stage||"—"}</td><td><span className="doc-status">{d.current_revision_status||d.status||"—"}</span></td><td><button className="row-action" onClick={()=>setSelectedDoc(d)}>Open →</button></td></tr>)}</tbody></table></div>}
     </div>}
     {tab==="cover"&&<div className="workspace-panel"><ProjectCoverPageSettings project={project}/></div>}
+    {tab==="technical"&&<TechnicalDepartment project={project}/>}
+    {tab==="transmittals"&&<div className="workspace-panel"><ProjectTransmittals project={project}/></div>}
     {tab==="overview"&&<div className="workspace-panel"><div className="workspace-panel-head"><div><span>PROJECT INFORMATION</span><h2>{project.project_name}</h2></div></div><div className="info-grid"><Info label="Project code" value={project.project_code}/><Info label="Client" value={project.client_name}/><Info label="Project ID" value={project.id}/><Info label="Created" value={formatDate(project.created_at)}/><div className="info-full"><span>Description</span><p>{project.description||"No project description has been provided."}</p></div></div></div>}
     {selectedDoc&&<DocumentDrawer document={selectedDoc} onClose={()=>setSelectedDoc(null)}/>}
+    {showExcelImport&&
+      <DocumentExcelImportModal
+        projectId={project.id}
+        onClose={()=>setShowExcelImport(false)}
+        onImported={loadDocs}
+      />
+    }
   </section>
 }
 
 function Info({label,value}){return <div className="info-item"><span>{label}</span><strong>{value||"—"}</strong></div>}
+
+function TechnicalDepartment({project}){
+  const departments = [
+    {code:"ENG", name:"Engineering", desc:"Technical document preparation, checking and engineering coordination."},
+    {code:"PRC", name:"Process", desc:"Process documents, calculations, diagrams and technical reviews."},
+    {code:"MEC", name:"Mechanical", desc:"Mechanical equipment, datasheets, drawings and vendor documentation."},
+    {code:"ELE", name:"Electrical", desc:"Electrical drawings, calculations, schedules and technical submissions."},
+    {code:"INS", name:"Instrumentation", desc:"Instrument documents, datasheets, loops and control documentation."},
+    {code:"PIP", name:"Piping", desc:"Piping drawings, isometrics, layouts and technical deliverables."},
+    {code:"CIV", name:"Civil / Structural", desc:"Civil, structural and construction-related technical documentation."},
+    {code:"QA", name:"QA / QC", desc:"Quality records, inspections, approvals and controlled technical records."},
+  ];
+
+  return <div className="workspace-panel technical-department-panel">
+    <div className="technical-hero">
+      <div>
+        <span>TECHNICAL DOCUMENT CONTROL</span>
+        <h2>Technical Department</h2>
+        <p>Organise technical disciplines and route project documents to the appropriate department. This is the frontend foundation; department assignment and workflow persistence can be connected to the backend next.</p>
+      </div>
+      <div className="technical-project-chip">
+        <small>PROJECT</small>
+        <strong>{project.project_code||`PRJ-${project.id}`}</strong>
+      </div>
+    </div>
+
+    <div className="technical-toolbar">
+      <div>
+        <strong>Technical disciplines</strong>
+        <span>{departments.length} departments available</span>
+      </div>
+      <button type="button" className="ghost-btn" onClick={()=>alert("Technical Department configuration will be connected to the project workflow in the next step.")}>Configure workflow</button>
+    </div>
+
+    <div className="technical-grid">
+      {departments.map(department=>
+        <article className="technical-card" key={department.code}>
+          <div className="technical-card-top">
+            <span className="technical-code">{department.code}</span>
+            <span className="technical-dot" aria-hidden="true"></span>
+          </div>
+          <h3>{department.name}</h3>
+          <p>{department.desc}</p>
+          <div className="technical-card-footer">
+            <span>Document queue</span>
+            <button type="button" onClick={()=>alert(`${department.name} department workspace will be opened here.`)}>Open →</button>
+          </div>
+        </article>
+      )}
+    </div>
+  </div>
+}
 
 function DocumentDrawer({document,onClose}){
   const [generating,setGenerating]=useState(false);

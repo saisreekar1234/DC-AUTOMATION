@@ -1,93 +1,50 @@
-# Cover Page Creation V1 — Integration
+# Excel Document Register Import — V1
 
-This package is the next implementation layer for the project-specific Cover Page module.
+## What it does
 
-## 1. Database
+- Admin uploads `.xlsx`, `.xlsm`, or `.xls` to a selected project.
+- Reads the `INTERNAL MDR` sheet.
+- Uses the actual Excel document structure:
+  - column 14 = DOCUMENT TITLE
+  - column 40 = Supplier/Vendor Document Number
+  - column 43 = Saipem/Customer Document Number
+  - column 44 = Vendor Name
+  - column 11 = Revision Number
+  - columns 58–105 = revision-by-revision tracking.
+- Creates or updates documents instead of creating duplicates.
+- Creates historical revision records when revision blocks contain data.
+- Sets the latest imported revision as `documents.current_revision_id`.
 
-Run:
+## Backend
 
-```sql
-database/009_cover_page_designer.sql
-```
-
-It adds JSON configuration columns to the existing `project_cover_page_templates` table:
-- `layout_config`
-- `field_mappings`
-- `table_mappings`
-- `logo_config`
-
-The existing one-active-template-per-project design is preserved.
-
-## 2. Backend files
-
-Copy:
-- `backend/src/services/projectCoverPageConfigService.js`
-- `backend/src/controllers/projectCoverPageConfigController.js`
-- `backend/src/routes/projectCoverPageConfigRoutes.js`
-- `backend/src/services/coverPageService.js`
-- `backend/src/controllers/projectCoverPageTemplateController.js`
-- `backend/src/services/projectCoverPageTemplateService.js`
-
-The template upload controller is now administrator-only.
-
-## 3. Server route
-
-In `backend/src/server.js`, add:
+1. Run `database/010_excel_document_register_import.sql`.
+2. Install `xlsx` in the backend:
+   `npm install xlsx`
+3. Copy the service/controller/route files into `backend/src/...`.
+4. In `server.js` add:
 
 ```js
-const projectCoverPageConfigRoutes = require("./routes/projectCoverPageConfigRoutes");
-app.use("/api/project-cover-page-configs", projectCoverPageConfigRoutes);
+const excelDocumentImportRoutes = require("./routes/excelDocumentImportRoutes");
+app.use("/api/document-register-import", excelDocumentImportRoutes);
 ```
 
-Keep the existing template route:
+## Frontend
 
-```js
-const projectCoverPageTemplateRoutes = require("./routes/projectCoverPageTemplateRoutes");
-app.use("/api/project-cover-page-templates", projectCoverPageTemplateRoutes);
+Copy `DocumentRegisterImport.jsx` into `frontend/src/components/`.
+
+In `Projects.jsx`:
+
+```jsx
+import DocumentRegisterImport from "./DocumentRegisterImport";
 ```
 
-## 4. PDF dependency
+Inside the project documents section, above `<DocumentRegister ... />`:
 
-From `backend`:
-
-```bash
-npm install pdf-lib
+```jsx
+<DocumentRegisterImport
+  project={project}
+  onImported={loadDocuments}
+/>
 ```
 
-## 5. Frontend
-
-Copy:
-- `frontend/src/components/CoverPageDesigner.jsx`
-- `frontend/src/components/cover-page-designer.css`
-- `frontend/src/components/ProjectCoverPageSettings.jsx`
-
-The replacement `ProjectCoverPageSettings.jsx` is administrator-controlled for template upload and designer configuration.
-
-Your existing `Projects.jsx` already renders `ProjectCoverPageSettings` in the Cover Page tab. Replace the existing component with the supplied version.
-
-## 6. Runtime behavior
-
-A user generates a cover page from the document screen using:
-
-`GET /api/documents/:id/cover-page`
-
-The renderer:
-1. Reads the document and its actual current revision.
-2. Reads the active project template.
-3. Reads the project's field mappings.
-4. Populates only the configured fields.
-5. Reads actual revision history from PostgreSQL.
-6. Reads current-revision signature names when available.
-7. Returns the generated PDF.
-
-## 7. Coordinate system
-
-PDF coordinates use the standard PDF origin: bottom-left.
-
-`x` and `y` are points. `width`, `height`, and `fontSize` are also points.
-
-The designer currently edits numeric coordinates. A later iteration can add drag-and-drop positioning directly over a rendered PDF.
-
-## 8. Important template rule
-
-Use a clean approved blank template for production. The two uploaded completed PDFs are reference examples, not production templates, because they contain real revision/signature information.
+This component is admin-only.

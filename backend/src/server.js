@@ -52,6 +52,11 @@ const projectCoverPageTemplateRoutes =
 const projectCoverPageConfigRoutes =
   require("./routes/projectCoverPageConfigRoutes");
 
+const documentImportRoutes =
+  require(
+    "./routes/documentImportRoutes"
+  );
+
 // ============================================================
 // APP
 // ============================================================
@@ -153,6 +158,10 @@ app.use(
   projectCoverPageConfigRoutes
 );
 
+app.use(
+  "/api/documents",
+  documentImportRoutes
+);
 // ============================================================
 // ROOT
 // ============================================================

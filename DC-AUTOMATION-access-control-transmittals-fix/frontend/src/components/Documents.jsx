@@ -5,7 +5,8 @@ import {
 } from "react";
 
 import api from "../api";
-
+import DocumentExcelImportModal
+  from "./DocumentExcelImportModal";
 export default function Documents() {
 
   // ==========================================================
@@ -30,6 +31,8 @@ export default function Documents() {
 
   const [error, setError] =
     useState("");
+
+  const [showExcelImport, setShowExcelImport] = useState(false);
 
 
   // ==========================================================
@@ -371,11 +374,8 @@ export default function Documents() {
   // ==========================================================
 
   function handleAddDocument() {
-
-    alert(
-      "Document creation will be connected to your existing backend."
-    );
-
+    setError("");
+    setShowExcelImport(true);
   }
 
 
@@ -501,7 +501,7 @@ export default function Documents() {
                 ＋
               </span>
 
-              Add Document
+              Import MDR
             </button>
 
           </div>
